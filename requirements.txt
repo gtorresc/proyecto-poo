@@ -1,0 +1,4 @@
+customtkinter>=5.2
+tkintermapview>=1.29
+requests>=2.31
+pytest>=8.0
