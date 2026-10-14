@@ -1,0 +1,51 @@
+# Changelog del diagrama de clases
+
+Archivos:
+- `diagrama_clases_v1.drawio`: fuente editable (draw.io / diagrams.net)
+- `diagrama_clases_v1.png`: exportación
+
+---
+
+## v1 (2026-10-14): primera versión derivada de las tablas CRC (Fase 2)
+
+### Trazabilidad análisis → CRC → UML
+
+| Requisito (Fase 1) | Tarjeta CRC (Fase 2) | Elemento en el UML v1 |
+|---|---|---|
+| RF1 Registrar robots | Robot, Flota | `Robot` (abstracta), `Flota.agregar()` |
+| RF2 Estado del robot | Robot, Bateria, Ubicacion | `Robot._estado: EstadoRobot`, `Robot._bateria`, `Robot._ubicacion` |
+| RF3 Recibir solicitudes | SolicitudEntrega | `SolicitudEntrega` con origen, destino y carga |
+| RF4 Restricciones de la carga | Carga y subtipos | `Carga.es_compatible_con()` redefinido en `Alimento`, `Fragil`, `MaterialPeligroso` |
+| RF5 Asignar robot compatible | Robot, AsignadorEntregas | `Robot.puede_atender()`, `AsignadorEntregas.asignar()` |
+| RF6 Consultar clima antes de usar dron | ProveedorClima, ServicioClimaOpenMeteo | `Robot.requiere_clima()` (solo `Dron` → True), `ProveedorClima.condiciones_favorables()` |
+| RF7 Reasignar o dejar pendiente | AsignadorEntregas, SolicitudEntrega | `AsignadorEntregas._pendientes`, `SolicitudEntrega.marcar_pendiente()` |
+| RF8 Costo y tiempo | Robot (polimórfico), Carga | `Robot.calcular_costo()`, `calcular_tiempo_min()`, `costo_por_km()` en cada subtipo, `Carga.recargo()` |
+| RF9 Bitácora de eventos | Bitacora, EventoBitacora | `Bitacora ◆— EventoBitacora`, enum `TipoEvento` |
+| RF10 Reporte | Bitacora | `Bitacora.generar_reporte()` |
+| RF11 Mantenimiento | Robot, Bateria | `Robot.enviar_a_mantenimiento()`, `Bateria.recargar()` |
+| RF12 Reintentar pendientes | AsignadorEntregas | `AsignadorEntregas.reintentar_pendientes()` |
+| Supuesto S1 (umbrales de clima) | ReporteClima / UmbralesClima | `UmbralesClima` (30 km/h, 40 km/h, 50 %) |
+| Supuesto S3 (reserva de batería 15 %) | Bateria | `Bateria._reserva_minima = 15.0`, `alcanza_para()` |
+| Supuesto S4 (API caída = no vuela) | ServicioClimaOpenMeteo | `ReporteClima._disponible`, `_timeout_s = 5.0` |
+| Supuesto S6 (peligrosos nunca en dron) | MaterialPeligroso | `MaterialPeligroso.es_compatible_con()` usando `Robot.es_aereo()` |
+
+### Relaciones exigidas por el PRD (Fase 3)
+
+| Exigencia | Dónde está |
+|---|---|
+| Herencia con polimorfismo real | `Robot` → `RobotRuedas`, `RobotOrugas`, `Dron`; `Carga` → 4 subtipos; `ProveedorClima` → 2 implementaciones |
+| Composición genuina (ciclo de vida dependiente) | `Robot ◆— Bateria` (1–1); `Bitacora ◆— EventoBitacora` (1–0..*) |
+| Agregación / asociación | `Flota ◇— Robot` (0..1–0..*); asociaciones de `AsignadorEntregas`, `SolicitudEntrega` |
+| Clima como dependencia desacoplada | `AsignadorEntregas — ProveedorClima` «inyectado» (asociación, no herencia) |
+
+### Cambios respecto a las tablas CRC
+
+| Cambio | Motivo |
+|---|---|
+| La tarjeta "ReporteClima / UmbralesClima" se separó en dos clases | Los umbrales son configuración que comparten el proveedor real y el simulado. El reporte es el dato que llega de la API. Tienen ciclos de vida distintos. |
+| Se agregó el enum `EstadoSolicitud` | La CRC decía "llevar su estado". Al modelarlo apareció un conjunto cerrado de valores (pendiente, asignada, entregada, fallida). |
+| Se agregó `Robot._tiene_control_temperatura` | `Alimento.es_compatible_con()` necesita consultar esa capacidad sin preguntar por la subclase del robot (decisión D4). |
+| Se explicitó `AsignadorEntregas._pendientes` | Lo exige RF12: para reintentar hay que guardar las solicitudes pendientes. |
+| Se agregó el método privado `ServicioClimaOpenMeteo._parsear_respuesta()` | Deja oculto el formato JSON de Open-Meteo: nadie fuera del servicio lo conoce. |
+| Se agregó `EventoBitacora.como_texto()` | El reporte de la bitácora necesita una representación de cada evento. |
+| Distancia por rutas reales (OSRM) **no** entra en v1 | Es opcional. Se usa `Ubicacion.distancia_km()` (Haversine) × `Robot.factor_ruta()`. |
