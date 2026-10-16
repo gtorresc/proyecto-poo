@@ -26,7 +26,7 @@ docs/          entregables por fase (análisis, CRC, UML)
 | --- | --- | --- |
 | 1. Análisis del problema | Hecha | [fase1-analisis.md](docs/fase1-analisis/fase1-analisis.md) · [PDF](docs/fase1-analisis/fase1-analisis.pdf) |
 | 2. Clases y responsabilidades (CRC) | Hecha | [fase2-crc.md](docs/fase2-crc/fase2-crc.md) · [PDF](docs/fase2-crc/fase2-crc.pdf) |
-| 3. Diseño UML | Hecha | [diagrama_clases_v1.png](docs/uml/diagrama_clases_v1.png) · [fuente draw.io](docs/uml/diagrama_clases_v1.drawio) · [changelog y trazabilidad](docs/uml/CHANGELOG_UML.md) |
+| 3. Diseño UML | Hecha | [diagrama_clases_v1.png](docs/fase3-uml/diagrama_clases_v1.png) · [fuente draw.io](docs/fase3-uml/diagrama_clases_v1.drawio) · [changelog y trazabilidad](docs/fase3-uml/CHANGELOG_UML.md) |
 | 4. Justificación de decisiones | Pendiente | — |
 | 5. Implementación | Pendiente | — |
 | 6. Reflexión crítica | Pendiente | — |
@@ -35,7 +35,7 @@ Presentación de la primera entrega (Fases 1 a 3):
 [PDF](<docs/entrega1/Primera entrega — Flota de robots UdeM.pdf>)
 
 La trazabilidad entre fases (requisito → tarjeta CRC → clase del UML) está en
-[CHANGELOG_UML.md](docs/uml/CHANGELOG_UML.md).
+[CHANGELOG_UML.md](docs/fase3-uml/CHANGELOG_UML.md).
 
 ## Requisitos
 
