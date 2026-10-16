@@ -137,7 +137,7 @@ Este documento justifica las 11 decisiones de diseño más importantes del model
 
 **Elección y principio.** (b). El modelo refleja el dominio real.
 
-**Dónde se ve.** En el UML, `Flota ◇— Robot` con multiplicidad 0..1–0..*.
+**Dónde se ve.** En el UML, `Flota ◇— Robot` con multiplicidad 0..1–0..\*.
 
 ### D9. Relación entre Bitácora y Evento: composición
 
