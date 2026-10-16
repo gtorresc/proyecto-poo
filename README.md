@@ -31,6 +31,9 @@ docs/          entregables por fase (análisis, CRC, UML)
 | 5. Implementación | Pendiente | — |
 | 6. Reflexión crítica | Pendiente | — |
 
+Presentación de la primera entrega (Fases 1 a 3):
+[PDF](<docs/entrega1/Primera entrega — Flota de robots UdeM.pdf>)
+
 La trazabilidad entre fases (requisito → tarjeta CRC → clase del UML) está en
 [CHANGELOG_UML.md](docs/uml/CHANGELOG_UML.md).
 
