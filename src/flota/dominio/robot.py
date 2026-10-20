@@ -65,6 +65,60 @@ class Robot(ABC):
     def calcular_tiempo_min(self, origen: Ubicacion, destino: Ubicacion) -> float:
         return self._distancia_ruta_km(origen, destino) / self._velocidad_kmh * 60
 
+    def calcular_costo(self, origen: Ubicacion, destino: Ubicacion, carga) -> float:
+        return self._distancia_ruta_km(origen, destino) * self.costo_por_km() * carga.recargo()
+
+    def _consumo_viaje(self, hasta: Ubicacion) -> float:
+        return self._distancia_ruta_km(self._ubicacion, hasta) * self.consumo_por_km()
+
+    def puede_atender(self, solicitud) -> bool:
+        """Estado, peso, zonas, tipo de carga y batería (ida al origen + entrega con reserva)."""
+        carga = solicitud.carga
+        zonas = self.zonas_accesibles()
+        consumo = (self._consumo_viaje(solicitud.origen)
+                   + self._distancia_ruta_km(solicitud.origen, solicitud.destino) * self.consumo_por_km())
+        return (self._estado is EstadoRobot.DISPONIBLE
+                and carga.peso_kg <= self._carga_maxima_kg
+                and solicitud.origen.zona in zonas
+                and solicitud.destino.zona in zonas
+                and carga.es_compatible_con(self)
+                and self._bateria.alcanza_para(consumo))
+
+    # --- Operación: cada método cambia el estado del robot -----------------
+    def cargar(self, carga, origen: Optional[Ubicacion] = None) -> None:
+        """Recoge la carga; si se da `origen`, el robot viaja allí primero y gasta batería."""
+        if self._estado is not EstadoRobot.DISPONIBLE:
+            raise ValueError(f"{self._id} no está disponible ({self._estado.value})")
+        if carga.peso_kg > self._carga_maxima_kg:
+            raise ValueError(f"{self._id} no soporta {carga.peso_kg} kg")
+        if not carga.es_compatible_con(self):
+            raise ValueError(f"{self._id} no es compatible con {carga!r}")
+        if origen is not None:
+            self._bateria.consumir(self._consumo_viaje(origen))
+            self._ubicacion = origen
+        self._carga_actual = carga
+        self._estado = EstadoRobot.EN_RUTA
+
+    def entregar(self, destino: Ubicacion) -> None:
+        if self._estado is not EstadoRobot.EN_RUTA or self._carga_actual is None:
+            raise ValueError(f"{self._id} no lleva ninguna carga")
+        self._bateria.consumir(self._consumo_viaje(destino))
+        self._ubicacion = destino
+        self._carga_actual = None
+        self._estado = EstadoRobot.DISPONIBLE
+
+    def enviar_a_mantenimiento(self) -> None:
+        """Recarga la batería; el robot no recibe entregas hasta `terminar_mantenimiento`."""
+        if self._estado is EstadoRobot.EN_RUTA:
+            raise ValueError(f"{self._id} lleva una carga y no puede entrar a mantenimiento")
+        self._bateria.recargar()
+        self._estado = EstadoRobot.MANTENIMIENTO
+
+    def terminar_mantenimiento(self) -> None:
+        if self._estado is not EstadoRobot.MANTENIMIENTO:
+            raise ValueError(f"{self._id} no está en mantenimiento")
+        self._estado = EstadoRobot.DISPONIBLE
+
     # --- Consultas (solo lectura) -----------------------------------------
     @property
     def id(self) -> str:
