@@ -1,0 +1,88 @@
+"""AsignadorEntregas: robot más barato y consulta de clima."""
+import pytest
+
+from flota.asignacion.asignador import AsignadorEntregas
+from flota.dominio.bitacora import Bitacora, TipoEvento
+from flota.dominio.carga import Alimento, Documento
+from flota.dominio.estado_robot import EstadoRobot
+from flota.dominio.flota import Flota
+from flota.dominio.robot import Dron, RobotOrugas, RobotRuedas
+from flota.dominio.solicitud import EstadoSolicitud, SolicitudEntrega
+from flota.dominio.ubicacion import Ubicacion, Zona
+from flota.servicios.clima_simulado import ServicioClimaSimulado
+from flota.servicios.proveedor_clima import ProveedorClima
+
+ESTACION = Ubicacion("Bloque 20 - Servicios generales", 6.231081, -75.612645, Zona.EDIFICIO)
+CAFETERIA = Ubicacion("Zona de comidas - Ingenierías", 6.230213, -75.611780, Zona.EDIFICIO)
+BIBLIOTECA = Ubicacion("Bloque 13 - Biblioteca", 6.231948, -75.611169, Zona.EDIFICIO)
+JARDIN = Ubicacion("Jardín central", 6.231500, -75.611900, Zona.ZONA_VERDE)
+AZOTEA = Ubicacion("Azotea Bloque 13", 6.231948, -75.611169, Zona.AZOTEA)
+
+
+class ClimaQueNoSeDebeConsultar(ProveedorClima):
+    def obtener_reporte(self, ubicacion):
+        raise AssertionError("un robot terrestre no necesita clima")
+
+
+@pytest.fixture
+def entorno():
+    flota, bitacora, clima = Flota(), Bitacora(), ServicioClimaSimulado()
+    for robot in (RobotRuedas("R-01", ESTACION), RobotOrugas("O-01", ESTACION), Dron("D-01", ESTACION)):
+        flota.agregar(robot)
+    return flota, bitacora, clima, AsignadorEntregas(flota, clima, bitacora)
+
+
+def test_documento_entre_edificios_va_en_ruedas_el_mas_barato(entorno):
+    flota, _, _, asignador = entorno
+    s = SolicitudEntrega(CAFETERIA, BIBLIOTECA, Documento("Tesis", 1))
+    assert asignador.asignar(s)
+    assert s.robot.id == "R-01" and s.estado is EstadoSolicitud.ASIGNADA
+    assert s.costo > 0 and s.tiempo_min > 0
+    assert flota.buscar("R-01").estado is EstadoRobot.EN_RUTA
+
+
+def test_azotea_con_buen_clima_va_en_dron(entorno):
+    _, _, _, asignador = entorno
+    s = SolicitudEntrega(CAFETERIA, AZOTEA, Documento("Tesis", 1))
+    assert asignador.asignar(s) and s.robot.id == "D-01"
+
+
+def test_mal_clima_rechaza_al_dron_y_lo_registra(entorno):
+    _, bitacora, clima, asignador = entorno
+    clima.configurar(viento=45, rafagas=50, lluvia=10, dia=True)
+    s = SolicitudEntrega(CAFETERIA, AZOTEA, Documento("Tesis", 1))
+    assert not asignador.asignar(s)
+    assert s.estado is EstadoSolicitud.PENDIENTE and s.robot is None
+    rechazo, = bitacora.filtrar(TipoEvento.RECHAZO_CLIMA)
+    assert rechazo.robot_id == "D-01" and "viento" in rechazo.mensaje
+
+
+def test_mal_clima_reasigna_a_un_terrestre_si_puede(entorno):
+    _, bitacora, clima, asignador = entorno
+    clima.configurar(viento=45, rafagas=50, lluvia=10, dia=True)
+    s = SolicitudEntrega(CAFETERIA, JARDIN, Documento("Tesis", 1))  # Orugas o dron
+    assert asignador.asignar(s) and s.robot.id == "O-01"
+    assert len(bitacora.filtrar(TipoEvento.RECHAZO_CLIMA)) == 0  # el dron era más caro: ni se consultó
+
+
+def test_los_terrestres_no_consultan_el_clima(entorno):
+    flota, bitacora, _, _ = entorno
+    asignador = AsignadorEntregas(flota, ClimaQueNoSeDebeConsultar(), bitacora)
+    assert asignador.asignar(SolicitudEntrega(CAFETERIA, BIBLIOTECA, Documento("Tesis", 1)))
+
+
+def test_sin_robot_compatible_no_asigna(entorno):
+    _, _, _, asignador = entorno
+    s = SolicitudEntrega(CAFETERIA, BIBLIOTECA, Alimento("Almuerzo", 1, 60))  # nadie tiene frío
+    assert not asignador.asignar(s)
+
+
+def test_cambiar_proveedor_en_vivo(entorno):
+    flota, bitacora, clima, asignador = entorno
+    clima.configurar(viento=45, rafagas=50, lluvia=10, dia=True)
+    s = SolicitudEntrega(CAFETERIA, AZOTEA, Documento("Tesis", 1))
+    assert not asignador.asignar(s)
+    asignador.cambiar_proveedor_clima(ServicioClimaSimulado())  # clima despejado
+    assert asignador.asignar(s)
+    with pytest.raises(TypeError):
+        asignador.cambiar_proveedor_clima("real")
