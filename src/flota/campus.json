@@ -1,0 +1,22 @@
+{
+  "ubicaciones": {
+    "estacion":        {"nombre": "Bloque 20 - Servicios generales", "lat": 6.231081, "lon": -75.612645, "zona": "EDIFICIO"},
+    "cafeteria":       {"nombre": "Zona de comidas - Ingenierías", "lat": 6.230213, "lon": -75.611780, "zona": "EDIFICIO"},
+    "ingenierias":     {"nombre": "Bloque 4 - Ingenierías", "lat": 6.230319, "lon": -75.611937, "zona": "EDIFICIO"},
+    "biblioteca":      {"nombre": "Bloque 13 - Biblioteca", "lat": 6.231948, "lon": -75.611169, "zona": "EDIFICIO"},
+    "derecho":         {"nombre": "Bloque 16 - Facultad de Derecho", "lat": 6.232422, "lon": -75.610368, "zona": "EDIFICIO"},
+    "comunicacion":    {"nombre": "Bloque 10 - Facultad de Comunicación", "lat": 6.232043, "lon": -75.612484, "zona": "EDIFICIO"},
+    "laboratorios":    {"nombre": "Bloque 3 - Centro de Laboratorios", "lat": 6.230253, "lon": -75.611199, "zona": "EDIFICIO"},
+    "correspondencia": {"nombre": "Bloque 18 - Correspondencia", "lat": 6.232695, "lon": -75.611151, "zona": "EDIFICIO"},
+    "azotea_b11":      {"nombre": "Azotea Bloque 11 - Ciencias Sociales", "lat": 6.231989, "lon": -75.612080, "zona": "AZOTEA"},
+    "azotea_b12":      {"nombre": "Azotea Bloque 12 - Posgrados", "lat": 6.231935, "lon": -75.611643, "zona": "AZOTEA"},
+    "cancha":          {"nombre": "Bloque 8 - Cancha", "lat": 6.230940, "lon": -75.611371, "zona": "ZONA_VERDE"},
+    "eco_huerta":      {"nombre": "Eco Huerta", "lat": 6.229858, "lon": -75.613058, "zona": "ZONA_VERDE"}
+  },
+  "robots": [
+    {"tipo": "ruedas", "id": "R-01", "ubicacion": "estacion"},
+    {"tipo": "ruedas", "id": "R-02", "ubicacion": "estacion", "tiene_control_temperatura": true},
+    {"tipo": "orugas", "id": "O-01", "ubicacion": "estacion"},
+    {"tipo": "dron",   "id": "D-01", "ubicacion": "estacion"}
+  ]
+}
