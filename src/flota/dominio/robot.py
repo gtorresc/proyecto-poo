@@ -6,6 +6,7 @@ from flota.dominio.bateria import Bateria
 from flota.dominio.estado_robot import EstadoRobot
 from flota.dominio.ubicacion import Ubicacion, Zona
 
+MARGEN_MANTENIMIENTO = 10  # puntos de batería sobre la reserva que disparan el mantenimiento
 FACTOR_RODEO_TERRESTRE = 1.3  # supuesto S5: los robots terrestres siguen senderos
 
 
@@ -113,6 +114,10 @@ class Robot(ABC):
             raise ValueError(f"{self._id} lleva una carga y no puede entrar a mantenimiento")
         self._bateria.recargar()
         self._estado = EstadoRobot.MANTENIMIENTO
+
+    def necesita_mantenimiento(self) -> bool:
+        # puede_atender ya garantiza que nunca baje de la reserva, así que se recarga al acercarse
+        return self._bateria.nivel <= self._bateria.reserva_minima + MARGEN_MANTENIMIENTO
 
     def terminar_mantenimiento(self) -> None:
         if self._estado is not EstadoRobot.MANTENIMIENTO:

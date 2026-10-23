@@ -86,3 +86,58 @@ def test_cambiar_proveedor_en_vivo(entorno):
     assert asignador.asignar(s)
     with pytest.raises(TypeError):
         asignador.cambiar_proveedor_clima("real")
+
+
+# --- Commit 11: pendientes, reintentos, entregas y mantenimiento ------------
+def test_sin_robot_queda_pendiente_y_se_registra(entorno):
+    _, bitacora, _, asignador = entorno
+    s = SolicitudEntrega(CAFETERIA, BIBLIOTECA, Alimento("Almuerzo", 1, 60))
+    assert not asignador.asignar(s)
+    assert asignador.pendientes == (s,) and s.motivo
+    assert len(bitacora.filtrar(TipoEvento.SOLICITUD_PENDIENTE)) == 1
+    asignador.reintentar_pendientes()  # sigue sin poder: ni se duplica ni se registra de nuevo
+    assert asignador.pendientes == (s,)
+    assert len(bitacora.filtrar(TipoEvento.SOLICITUD_PENDIENTE)) == 1
+
+
+def test_pendiente_por_clima_se_reintenta_cuando_mejora(entorno):
+    _, _, clima, asignador = entorno
+    clima.configurar(viento=45, rafagas=50, lluvia=10, dia=True)
+    s = SolicitudEntrega(CAFETERIA, AZOTEA, Documento("Tesis", 1))
+    assert not asignador.asignar(s) and "clima" in s.motivo
+    clima.configurar(viento=10, rafagas=15, lluvia=10, dia=True)
+    assert asignador.reintentar_pendientes() == 1
+    assert s.robot.id == "D-01" and asignador.pendientes == ()
+
+
+def test_se_reintenta_sola_al_liberar_un_robot():
+    flota, bitacora, clima = Flota(), Bitacora(), ServicioClimaSimulado()
+    flota.agregar(RobotRuedas("R-01", ESTACION))
+    asignador = AsignadorEntregas(flota, clima, bitacora)
+    primera = SolicitudEntrega(CAFETERIA, BIBLIOTECA, Documento("Tesis", 1))
+    segunda = SolicitudEntrega(CAFETERIA, BIBLIOTECA, Documento("Apuntes", 1))
+    assert asignador.asignar(primera) and not asignador.asignar(segunda)
+    asignador.completar_entrega(primera)
+    assert primera.estado is EstadoSolicitud.ENTREGADA
+    assert segunda.estado is EstadoSolicitud.ASIGNADA and asignador.pendientes == ()
+    assert len(bitacora.filtrar(TipoEvento.ENTREGA_EXITOSA)) == 1
+
+
+def test_bateria_bajo_la_reserva_manda_a_mantenimiento(entorno):
+    flota, bitacora, _, asignador = entorno
+    flota.quitar("O-01")
+    flota.quitar("D-01")
+    flota.quitar("R-01")
+    flota.agregar(RobotRuedas("R-02", CAFETERIA, nivel_bateria=17))
+    s = SolicitudEntrega(CAFETERIA, BIBLIOTECA, Documento("Tesis", 1))
+    assert asignador.asignar(s)
+    asignador.completar_entrega(s)
+    robot = flota.buscar("R-02")
+    assert robot.estado is EstadoRobot.MANTENIMIENTO and robot.nivel_bateria == 100
+    assert bitacora.filtrar(TipoEvento.MANTENIMIENTO)[0].robot_id == "R-02"
+
+
+def test_no_se_completa_lo_que_no_esta_asignado(entorno):
+    _, _, _, asignador = entorno
+    with pytest.raises(ValueError):
+        asignador.completar_entrega(SolicitudEntrega(CAFETERIA, BIBLIOTECA, Documento("Tesis", 1)))
