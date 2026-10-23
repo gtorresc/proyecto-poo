@@ -1,4 +1,4 @@
-"""Demo por consola: un día en el campus UdeM. `python main.py` (clima simulado) o `--real`."""
+"""Demo por consola: un día en el campus UdeM. `python main.py` (clima simulado); `--real` usa Open-Meteo y `--gui` abre la ventana."""
 import sys
 from pathlib import Path
 
@@ -55,4 +55,8 @@ def main(real: bool = False) -> None:
 
 
 if __name__ == "__main__":
-    main(real="--real" in sys.argv)
+    if "--gui" in sys.argv:
+        from flota.gui.app import main as abrir_gui
+        abrir_gui(real="--real" in sys.argv)
+    else:
+        main(real="--real" in sys.argv)
