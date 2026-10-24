@@ -36,6 +36,7 @@ class PanelMapa(ctk.CTkFrame):
         super().__init__(master)
         self._flota = flota
         self._marcadores_robots = []
+        self._posiciones = None
         self.mapa = tkintermapview.TkinterMapView(self, corner_radius=0)  # tiles de OpenStreetMap
         self.mapa.pack(fill="both", expand=True)
         self.mapa.set_position(*CENTRO_CAMPUS)
@@ -48,6 +49,10 @@ class PanelMapa(ctk.CTkFrame):
 
     def refrescar(self) -> None:
         """Vuelve a dibujar los robots en su ubicación actual."""
+        posiciones = [(r.id, r.ubicacion) for r in self._flota.robots]
+        if posiciones == self._posiciones:
+            return  # nada se movió: evita redibujar cada segundo
+        self._posiciones = posiciones
         for marcador in self._marcadores_robots:
             marcador.delete()
         self._marcadores_robots = [
