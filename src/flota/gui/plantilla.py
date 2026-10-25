@@ -52,7 +52,7 @@ class TarjetaRobot(ctk.CTkFrame):
 
 
 class Plantilla(ctk.CTkFrame):
-    """Una tarjeta por robot. Al hacer clic se elige el robot y se abre su ficha."""
+    """Una tarjeta por robot. Un clic avisa a la ventana, que despacha o abre la ficha del robot."""
 
     def __init__(self, master, al_elegir):
         super().__init__(master, fg_color="transparent")
@@ -61,14 +61,10 @@ class Plantilla(ctk.CTkFrame):
         self._retratos_listos: dict[str, object] = {}  # los escribe un hilo; se aplican en refrescar
         self.elegido = None
 
-    def _elegir(self, id_robot: str) -> None:
-        self.elegido = None if self.elegido == id_robot else id_robot
-        self._al_elegir(self.elegido)
-
     def refrescar(self, estado: dict) -> None:
         for robot in estado["robots"]:
             if robot["id"] not in self._tarjetas:  # también los robots que se agreguen en vivo
-                tarjeta = TarjetaRobot(self, robot, self._elegir)
+                tarjeta = TarjetaRobot(self, robot, self._al_elegir)
                 tarjeta.pack(side="left", padx=6, pady=4)
                 self._tarjetas[robot["id"]] = tarjeta
                 threading.Thread(target=self._cargar_retrato, args=(robot["id"], robot["tipo"]),
@@ -121,3 +117,40 @@ class FichaRobot(ctk.CTkFrame):
             c.create_text(x, y, text=nombre, fill=tema.TINTA, font=(tema.MONO, 9))
         figura = puntos_radar(valores, cx, cy, radio)
         c.create_polygon(*sum(figura, ()), fill="#f5b77a", outline=tema.ALERTA, width=2)
+
+
+class FichaSolicitud(ctk.CTkFrame):
+    """Ficha de una llamada: el operador la despacha en AUTO o eligiendo un robot de la plantilla."""
+
+    def __init__(self, master, al_auto, al_cerrar):
+        super().__init__(master, fg_color=tema.PAPEL, corner_radius=2, border_width=2, border_color="#3d5a5e")
+        self.id = None
+        self._titulo = ctk.CTkLabel(self, text="", height=26, corner_radius=0, font=tema.fuente(16, True),
+                                    text_color="#ffffff", fg_color=tema.ALERTA, anchor="w")
+        self._titulo.pack(fill="x", padx=2, pady=(2, 0))
+        self._datos = ctk.CTkLabel(self, text="", justify="left", anchor="w", text_color=tema.TINTA,
+                                   font=tema.fuente(13), width=330, wraplength=330)
+        self._datos.pack(padx=12, pady=(6, 2))
+        self._resultado = ctk.CTkLabel(self, text="", justify="left", anchor="w", font=tema.fuente(13, True),
+                                       width=330, wraplength=330)
+        self._resultado.pack(padx=12)
+        botones = ctk.CTkFrame(self, fg_color="transparent")
+        botones.pack(fill="x", padx=12, pady=(4, 10))
+        ctk.CTkButton(botones, text="[A] AUTO", width=110, height=26, font=tema.fuente(13, True),
+                      command=lambda: al_auto(self.id)).pack(side="left")
+        ctk.CTkButton(botones, text="[ESC] CERRAR", width=110, height=26, font=tema.fuente(12),
+                      command=al_cerrar).pack(side="right")
+
+    def mostrar(self, baliza: dict) -> None:
+        nuevo = baliza["id"] != self.id
+        self.id = baliza["id"]
+        self._titulo.configure(text=f"  LLAMADA #{baliza['id']} · {baliza['carga'].upper()}")
+        espera = "en reintento automático" if baliza["automatica"] else "esperando robot"
+        self._datos.configure(text=f"De: {baliza['origen']}\nA:  {baliza['destino']}\n"
+                                   f"Peso: {baliza['peso']:g} kg · {espera}\n"
+                                   "Elige un robot en la plantilla o pulsa AUTO.")
+        if nuevo:  # al abrirla muestra por qué espera; después, el resultado del último despacho
+            self.anunciar(baliza["motivo"], ok=False)
+
+    def anunciar(self, texto: str, ok: bool) -> None:
+        self._resultado.configure(text=texto, text_color="#2c7a4b" if ok else tema.FALLA)

@@ -8,7 +8,7 @@ from flota.campus import cargar_campus, cargar_geometria
 from flota.dominio.bitacora import Bitacora
 from flota.dominio.estado_robot import EstadoRobot
 from flota.dominio.solicitud import EstadoSolicitud
-from flota.gui.centro_control import (CENTRO_CAMPUS, RECARGA_S, CentroControl, a_latlon, a_metros,
+from flota.gui.centro_control import (CENTRO_CAMPUS, RECARGA_S, CentroControl, a_metros,
                                       punto_en_recorrido)
 from flota.servicios.calendario_simulado import CalendarioSimulado
 from flota.servicios.clima_simulado import ServicioClimaSimulado
@@ -45,11 +45,10 @@ def robot(centro, id_robot):
     return next(r for r in centro.estado()["robots"] if r["id"] == id_robot)
 
 
-def test_conversion_a_metros_y_de_vuelta():
+def test_conversion_a_metros():
     assert a_metros(*CENTRO_CAMPUS) == (0, 0)
     x, y = a_metros(6.2326, -75.6101)  # ~110 m al norte y ~110 m al este
     assert 100 < x < 120 and 100 < y < 120
-    assert a_latlon(x, y) == pytest.approx((6.2326, -75.6101))
 
 
 def test_punto_en_recorrido_sigue_la_polilinea():

@@ -1,5 +1,6 @@
 """Ventana principal: el monitor de UdeM·DESPACHO. No tiene reglas de negocio: todo pasa por CentroControl."""
 import time
+import tkinter
 
 import customtkinter as ctk
 
@@ -9,7 +10,7 @@ from flota.gui.panel_bitacora import PanelBitacora
 from flota.gui.panel_clima import PanelClima, WidgetClima
 from flota.gui.panel_mapa import PanelMapa
 from flota.gui.panel_solicitud import PanelSolicitud
-from flota.gui.plantilla import FichaRobot, Plantilla
+from flota.gui.plantilla import FichaRobot, FichaSolicitud, Plantilla
 
 CREDITOS = "© OpenStreetMap contributors · Open-Meteo · Nager.Date · retratos RoboHash (CC-BY)"
 
@@ -31,15 +32,16 @@ class App(ctk.CTk):
         pantalla.rowconfigure(1, weight=1)
 
         self._barra_superior = self._barra(pantalla, row=0, pady=(10, 4))
-        self.panel_mapa = PanelMapa(pantalla, centro, self.actualizar)
+        self.panel_mapa = PanelMapa(pantalla, centro, self.actualizar, self._abrir_llamada, self._elegir)
         self.panel_mapa.grid(row=1, column=0, sticky="nsew", padx=(14, 6))
         self.widget_clima = WidgetClima(self.panel_mapa)
         self.widget_clima.place(relx=1, x=-12, y=12, anchor="ne")
         self.ficha = FichaRobot(self.panel_mapa, lambda: self._elegir(None))
+        self.ficha_llamada = FichaSolicitud(self.panel_mapa, self._auto, self._cerrar_llamada)
 
         lateral = ctk.CTkFrame(pantalla, fg_color="transparent", width=340)
         lateral.grid(row=1, column=1, rowspan=2, sticky="ns", padx=(6, 14))
-        PanelSolicitud(lateral, centro, self.actualizar).pack(fill="x", pady=(0, 6))
+        PanelSolicitud(lateral, centro, self._abrir_llamada).pack(fill="x", pady=(0, 6))
         PanelClima(lateral, centro, self.actualizar).pack(fill="x", pady=6)
         self.panel_bitacora = PanelBitacora(lateral, centro)
         self.panel_bitacora.pack(fill="both", expand=True, pady=(6, 0))
@@ -47,7 +49,10 @@ class App(ctk.CTk):
         self.plantilla = Plantilla(pantalla, self._elegir)
         self.plantilla.grid(row=2, column=0, sticky="ew", padx=14, pady=(8, 0))
         self._barra_inferior = self._barra(pantalla, row=3, pady=(4, 10))
-        self.bind("<Escape>", lambda _: self._elegir(None))
+        self.bind("<Escape>", lambda _: (self._cerrar_llamada(), self._elegir(None)))
+        self.bind("<Tab>", lambda _: (self.panel_mapa.alternar(), "break")[1])
+        self.bind("<KeyPress-r>", lambda _: self._atajo(self.panel_mapa.girar))
+        self.bind("<KeyPress-a>", lambda _: self._atajo(lambda: self._auto(self.ficha_llamada.id)))
         self._ciclo()
 
     def _barra(self, master, row: int, pady) -> ctk.CTkLabel:
@@ -56,7 +61,45 @@ class App(ctk.CTk):
         barra.grid(row=row, column=0, columnspan=2, sticky="ew", padx=18, pady=pady)
         return barra
 
+    def _atajo(self, accion) -> None:
+        if not isinstance(self.focus_get(), tkinter.Entry):  # escribir en el peso no dispara atajos
+            accion()
+
+    # --- Despacho: la llamada abierta + un robot de la plantilla, o AUTO -------------------
+    def _abrir_llamada(self, id_solicitud: int) -> None:
+        baliza = self._baliza(id_solicitud)
+        if baliza is None:
+            return
+        self.ficha_llamada.id = None  # así mostrar() la trata como nueva y enseña por qué espera
+        self.ficha_llamada.mostrar(baliza)
+        self.ficha_llamada.place(x=12, y=12, anchor="nw")
+
+    def _cerrar_llamada(self) -> None:
+        self.ficha_llamada.id = None
+        self.ficha_llamada.place_forget()
+
+    def _baliza(self, id_solicitud):
+        return next((b for b in self.centro.estado()["balizas"] if b["id"] == id_solicitud), None)
+
+    def _auto(self, id_solicitud) -> None:
+        if id_solicitud is None:
+            return
+        self._despues_de_despachar(*self.centro.despachar_auto(id_solicitud))
+
+    def _despues_de_despachar(self, ok: bool, motivo: str) -> None:
+        if ok:
+            self._cerrar_llamada()
+        else:
+            self.ficha_llamada.anunciar(f"RECHAZADO: {motivo}", ok=False)
+        self.actualizar()
+
     def _elegir(self, id_robot) -> None:
+        if id_robot and self.ficha_llamada.id is not None:  # hay una llamada abierta: despacho manual
+            ok, motivo = self.centro.despachar(self.ficha_llamada.id, id_robot)
+            self._despues_de_despachar(ok, motivo)
+            return
+        if id_robot == self.plantilla.elegido:  # segundo clic en el mismo robot: cierra su ficha
+            id_robot = None
         self.plantilla.elegido = id_robot
         if id_robot is None:
             self.ficha.place_forget()
@@ -70,6 +113,12 @@ class App(ctk.CTk):
         self.plantilla.refrescar(estado)
         self.widget_clima.refrescar(estado)
         self.panel_bitacora.refrescar(estado)
+        if self.ficha_llamada.id is not None:
+            baliza = next((b for b in estado["balizas"] if b["id"] == self.ficha_llamada.id), None)
+            if baliza is None:  # se asignó sola al reintentar: ya no hay nada que despachar
+                self._cerrar_llamada()
+            else:
+                self.ficha_llamada.mostrar(baliza)
         if self.plantilla.elegido:
             self.ficha.mostrar(next(r for r in estado["robots"] if r["id"] == self.plantilla.elegido))
         r, c, cal = estado["resumen"], estado["clima"], estado["calendario"]

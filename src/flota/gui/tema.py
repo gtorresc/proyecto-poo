@@ -8,10 +8,13 @@ RECURSOS = Path(__file__).resolve().parent.parent / "recursos"
 TEMA_JSON = Path(__file__).with_name("tema_udem.json")  # colores de los widgets, en modo oscuro
 
 # Paleta: el mapa cambia de día a noche; el resto de la interfaz no
-DIA = {"fondo_mapa": "#1d7f7b", "edificio": "#2bb3a3", "arista": "#b9fff2", "sendero": "#5fd3c3",
-       "ciudad": "#227f78", "arista_ciudad": "#6fd6c8"}
-NOCHE = {"fondo_mapa": "#0c1a1c", "edificio": "#10302c", "arista": "#46f0b4", "sendero": "#1f5a4c",
-         "ciudad": "#0f2624", "arista_ciudad": "#1f6a58"}
+DIA = {"fondo_mapa": "#1d7f7b", "campus": "#23918b", "edificio": "#2bb3a3", "pared": "#1f8f84",
+       "arista": "#b9fff2", "sendero": "#5fd3c3", "calle": "#176a66", "ciudad": "#227f78",
+       "pared_ciudad": "#1b6f69", "arista_ciudad": "#6fd6c8"}
+NOCHE = {"fondo_mapa": "#0c1a1c", "campus": "#0f2225", "edificio": "#10302c", "pared": "#0b2420",
+         "arista": "#46f0b4", "sendero": "#1f5a4c", "calle": "#14302e", "ciudad": "#0f2624",
+         "pared_ciudad": "#0b1d1c", "arista_ciudad": "#1f6a58"}
+RESALTADO = {"edificio": "#f08a2c", "pared": "#c46a1c", "arista": "#ffd2a1"}  # edificio con una llamada
 BISEL = "#1b2b2e"
 PANEL = "#132326"
 TEXTO = "#c9e6e2"

@@ -46,10 +46,6 @@ def a_metros(lat: float, lon: float) -> tuple[float, float]:
             (lat - CENTRO_CAMPUS[0]) * METROS_POR_GRADO_LAT)
 
 
-def a_latlon(x: float, y: float) -> tuple[float, float]:
-    return CENTRO_CAMPUS[0] + y / METROS_POR_GRADO_LAT, CENTRO_CAMPUS[1] + x / METROS_POR_GRADO_LON
-
-
 def dentro(punto, poligono) -> bool:
     """Punto en polígono por cruce de rayos; sirve igual en grados o en metros."""
     y, x = punto
@@ -99,10 +95,12 @@ class CentroControl:
                       "en_campus": dentro(e["contorno"][0], geo["perimetro"])}
                      for e in geo["edificios"]]
         ubicaciones = []
+        self._edificio_de = {}  # nombre de la ubicación -> índice de su edificio, para resaltarlo
         for clave, u in self._ubicaciones.items():
             x, y = a_metros(u.latitud, u.longitud)
             edificio = next((i for i, e in enumerate(geo["edificios"])
                              if dentro((u.latitud, u.longitud), e["contorno"])), None)
+            self._edificio_de[u.nombre] = edificio
             ubicaciones.append({"clave": clave, "nombre": u.nombre, "zona": u.zona.value,
                                 "x": x, "y": y, "edificio": edificio})
         sur_oeste = a_metros(geo["limites"]["sur"], geo["limites"]["oeste"])
@@ -275,11 +273,10 @@ class CentroControl:
                 "solicitud": solicitud.id, "destino": solicitud.destino.nombre,
                 "carga": solicitud.carga.descripcion, "progreso": t,
                 "costo": solicitud.costo, "tiempo_min": solicitud.tiempo_min}
-            lat, lon = a_latlon(x, y)
             robots.append({"id": robot.id, "tipo": type(robot).__name__.removeprefix("Robot"),
                            "estado": robot.estado.value, "franja": FRANJA_ESTADO[robot.estado],
                            "bateria": robot.nivel_bateria, "es_aereo": robot.es_aereo(),
-                           "x": x, "y": y, "z": z, "lat": lat, "lon": lon,
+                           "x": x, "y": y, "z": z,
                            "recorrido": [list(p) for p in recorrido], "mision": mision,
                            "radar": radar[robot.id]})
         return robots
@@ -300,7 +297,8 @@ class CentroControl:
             x, y = a_metros(o.latitud, o.longitud)
             balizas.append({"id": solicitud.id, "origen": o.nombre, "destino": solicitud.destino.nombre,
                             "carga": solicitud.carga.descripcion, "peso": solicitud.carga.peso_kg,
-                            "x": x, "y": y, "motivo": solicitud.motivo, "automatica": automatica,
+                            "x": x, "y": y, "edificio": self._edificio_de.get(o.nombre),
+                            "motivo": solicitud.motivo, "automatica": automatica,
                             "espera_s": ahora - self._creada_en.get(solicitud.id, ahora)})
         return balizas
 

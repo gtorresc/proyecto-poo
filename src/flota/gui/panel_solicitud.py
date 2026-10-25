@@ -1,4 +1,4 @@
-"""Formulario de nueva solicitud: se la pasa a CentroControl, que la asigna con el asignador."""
+"""Formulario de nueva llamada: CentroControl la pone en el mapa como baliza, sin asignarla todavía."""
 import customtkinter as ctk
 
 from flota.gui import tema
@@ -6,13 +6,13 @@ from flota.gui import tema
 
 class PanelSolicitud(ctk.CTkFrame):
 
-    def __init__(self, master, centro, al_cambiar):
+    def __init__(self, master, centro, al_crear):
         super().__init__(master)
         geo = centro.geometria()
         self._clave_lugar = {u["nombre"]: u["clave"] for u in geo["ubicaciones"]}
         self._clave_carga = {t["nombre"]: t["clave"] for t in geo["tipos_carga"]}
         self._centro = centro
-        self._al_cambiar = al_cambiar
+        self._al_crear = al_crear
         nombres = list(self._clave_lugar)
         ctk.CTkLabel(self, text="NUEVA LLAMADA", font=tema.fuente(17, True)).pack(
             anchor="w", padx=10, pady=(6, 0))
@@ -24,7 +24,7 @@ class PanelSolicitud(ctk.CTkFrame):
         self._peso = ctk.CTkEntry(self)
         self._peso.insert(0, "1.5")
         self._peso.pack(fill="x", padx=10)
-        ctk.CTkButton(self, text="DESPACHAR AUTO", font=tema.fuente(15, True),
+        ctk.CTkButton(self, text="CREAR LLAMADA", font=tema.fuente(15, True),
                       command=self._asignar).pack(fill="x", padx=10, pady=8)
         self._resultado = ctk.CTkLabel(self, text="", wraplength=300, justify="left", font=tema.fuente(13))
         self._resultado.pack(anchor="w", padx=10, pady=(0, 8))
@@ -43,15 +43,8 @@ class PanelSolicitud(ctk.CTkFrame):
         except ValueError as error:  # peso no numérico, <= 0 u origen igual al destino
             self._mostrar(f"DATOS INVÁLIDOS: {error}", tema.FALLA)
             return
-        ok, motivo = self._centro.despachar_auto(id_sol)
-        if ok:
-            robot = next(r for r in self._centro.estado()["robots"]
-                         if r["mision"] and r["mision"]["solicitud"] == id_sol)
-            m = robot["mision"]
-            self._mostrar(f"{robot['id']} EN RUTA · ${m['costo']:,.0f} · {m['tiempo_min']:.1f} min", "#46f0b4")
-        else:
-            self._mostrar(f"EN ESPERA: {motivo}", tema.ALERTA)
-        self._al_cambiar()
+        self._mostrar(f"LLAMADA #{id_sol} EN EL MAPA", "#46f0b4")
+        self._al_crear(id_sol)
 
     def _mostrar(self, texto: str, color: str) -> None:
         self._resultado.configure(text=texto, text_color=color)

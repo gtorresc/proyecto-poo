@@ -16,7 +16,7 @@ src/flota/
   dominio/       robots, cargas, batería, ubicaciones, solicitudes, bitácora
   servicios/     proveedores de clima (API real y simulado)
   asignacion/    reglas de asignación de entregas
-  gui/           interfaz gráfica (CustomTkinter + mapa OpenStreetMap)
+  gui/           interfaz gráfica UdeM·DESPACHO (CustomTkinter, mapa vectorial 2D/3D del campus)
   campus.json    puntos reales del campus UdeM y flota inicial (datos, no clases)
   campus_osm.json  edificios y caminos del campus tomados de OpenStreetMap (datos de dibujo y rutas)
   campus.py      carga campus.json, arma la flota y lee campus_osm.json
@@ -61,8 +61,9 @@ python main.py --gui      # interfaz gráfica: mapa, flota, clima, solicitudes y
 
 - La demo con clima simulado y las pruebas funcionan sin internet.
 - `--real` consulta Open-Meteo; si la API no responde, el dron no vuela y el sistema sigue (queda en la bitácora).
-- La interfaz gráfica descarga el mapa de OpenStreetMap, así que necesita internet para dibujarlo
-  (© OpenStreetMap contributors). El interruptor del panel de clima cambia entre simulado y real en vivo.
+- La interfaz gráfica dibuja el campus con los datos de OpenStreetMap guardados en `campus_osm.json`
+  (© OpenStreetMap contributors), así que el mapa funciona sin internet. El interruptor del panel de
+  clima cambia entre simulado y real en vivo.
 
 ## Cambios respecto al diseño
 
