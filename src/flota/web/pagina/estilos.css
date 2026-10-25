@@ -1,0 +1,100 @@
+/* UdeM·DESPACHO, versión web: los mismos colores de gui/tema.py (guía de estilo 10). */
+:root {
+  --bisel: #1b2b2e;
+  --pantalla: #0f1d1f;
+  --panel: #132326;
+  --panel-claro: #183034;
+  --borde: #2f4b4f;
+  --texto: #c9e6e2;
+  --texto-barra: #9fbfbd;
+  --boton: #1d7f7b;
+  --boton-hover: #2bb3a3;
+  --fosforo: #46f0b4;
+  --alerta: #f08a2c;
+  --ocupado: #1f6fd1;
+  --libre: #3f9a6b;
+  --falla: #d2453b;
+  --papel: #f1e4c6;
+  --tinta: #2a2a2a;
+  --titulo: "Oswald-SemiBold", "Segoe UI Semibold", sans-serif;
+  --mono: "ShareTechMono-Regular", Consolas, monospace;
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { background: var(--bisel); color: var(--texto); font: 13px var(--mono); overflow: hidden; }
+h2, h3 { font-family: var(--titulo); font-weight: 600; margin: 0; letter-spacing: .02em; }
+h2 { font-size: 19px; }
+button, select, input { font: inherit; color: inherit; }
+[hidden] { display: none !important; }
+
+.monitor {
+  position: absolute; inset: 14px; display: grid; gap: 8px 12px; padding: 10px 14px;
+  grid-template: "sup sup" auto "mapa lat" 1fr "plantilla lat" auto "inf inf" auto / 1fr 340px;
+  background: var(--pantalla); border: 2px solid var(--borde); border-radius: 14px;
+}
+.barra { color: var(--texto-barra); font-size: 12px; white-space: pre; overflow: hidden; text-overflow: ellipsis; }
+#barra-superior { grid-area: sup; }
+#barra-inferior { grid-area: inf; }
+
+/* --- Mapa y lo que flota encima -------------------------------------------------- */
+.mapa { grid-area: mapa; position: relative; min-height: 0; border: 2px solid var(--bisel); border-radius: 4px; overflow: hidden; }
+#lienzo { position: absolute; inset: 0; width: 100%; height: 100%; cursor: grab; }
+.pildoras { position: absolute; top: 12px; right: 12px; padding: 4px 12px; text-align: center;
+  background: #0c1a1c; border: 1px solid var(--fosforo); border-radius: 3px; color: #b9fff2; }
+.semaforo { font-family: var(--titulo); font-size: 14px; }
+.controles-mapa { position: absolute; right: 12px; bottom: 12px; display: grid; gap: 4px; width: 110px; }
+.controles-mapa button { background: #0c1a1c; border: 1px solid var(--fosforo); }
+.controles-mapa button:hover { background: var(--boton); }
+.credito-mapa { position: absolute; left: 8px; bottom: 4px; font-size: 10px; color: #b9fff2; opacity: .8; }
+
+.ficha { position: absolute; left: 12px; width: 360px; background: var(--papel); color: var(--tinta);
+  border: 2px solid #3d5a5e; border-radius: 2px; box-shadow: 0 6px 18px #0008; }
+.ficha-llamada { top: 12px; }
+.ficha-robot { bottom: 12px; width: 400px; }
+.ficha p { margin: 8px 12px; white-space: pre-line; }
+.ficha-titulo { margin: 2px; padding: 3px 10px; color: #fff; font-size: 17px; background: var(--ocupado); }
+.ficha-titulo.alerta { background: var(--alerta); }
+.ficha .fila { padding: 0 12px 10px; }
+.resultado { font-family: var(--titulo); min-height: 1em; }
+.resultado.mal { color: var(--falla); }
+.resultado.bien { color: var(--fosforo); }
+.ficha .resultado.bien { color: #2c7a4b; }
+
+/* --- Columna lateral -------------------------------------------------------------- */
+.lateral { grid-area: lat; display: flex; flex-direction: column; gap: 10px; min-height: 0; }
+.panel { background: var(--panel); border-radius: 4px; padding: 8px 10px; display: flex; flex-direction: column; gap: 4px; }
+.panel label { display: flex; flex-direction: column; gap: 2px; font-size: 12px; }
+.panel label.deslizador { flex-direction: row; align-items: center; justify-content: space-between; }
+.panel label.interruptor { flex-direction: row; align-items: center; gap: 6px; }
+select, input[type=number] { background: var(--panel-claro); border: 1px solid var(--borde); border-radius: 3px; padding: 4px 6px; }
+input[type=range] { width: 170px; accent-color: var(--boton-hover); }
+input[type=checkbox] { accent-color: var(--alerta); width: 16px; height: 16px; }
+.radio { flex: 1; min-height: 120px; }
+.registro { flex: 1; overflow-y: auto; background: #0c1a1c; border-radius: 3px; padding: 6px; font-size: 12px; color: var(--texto-barra); }
+.registro .tipo { display: block; }
+.fila { display: flex; gap: 8px; align-items: center; justify-content: space-between; }
+.fila.derecha { justify-content: flex-end; }
+
+button { background: var(--boton); border: 0; border-radius: 3px; padding: 4px 10px; color: #e8fffb; cursor: pointer; }
+button:hover { background: var(--boton-hover); }
+button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--alerta); outline-offset: 1px; }
+button.grande { font-family: var(--titulo); font-size: 16px; padding: 8px; margin-top: 6px; }
+button.secundario { font-size: 12px; }
+kbd { font: inherit; opacity: .8; }
+kbd::before { content: "["; } kbd::after { content: "]"; }
+.segmentado { display: grid; grid-template-columns: 1fr 1fr; background: #0c1a1c; border-radius: 3px; padding: 2px; gap: 2px; }
+.segmentado button { background: var(--panel-claro); }
+.segmentado button.activo { background: var(--boton); }
+
+/* --- Plantilla de robots ---------------------------------------------------------- */
+.plantilla { grid-area: plantilla; display: flex; gap: 12px; overflow-x: auto; }
+.tarjeta { width: 124px; flex: none; background: #20393c; border: 2px solid #3d5a5e; border-radius: 3px;
+  padding: 2px; text-align: center; cursor: pointer; }
+.tarjeta.elegida { border-color: var(--alerta); }
+.tarjeta .franja { font-family: var(--titulo); color: #fff; padding: 1px 0; }
+.tarjeta img { display: block; width: 100%; aspect-ratio: 1; background: #2f5a58; }
+.tarjeta .nombre { font-family: var(--titulo); font-size: 20px; color: #f3efe4; }
+.tarjeta .tipo { font-size: 11px; color: var(--texto-barra); }
+.tarjeta .bateria { height: 6px; margin: 4px 8px 6px; background: #0c1a1c; border-radius: 2px; }
+.tarjeta .bateria div { height: 100%; border-radius: 2px; }

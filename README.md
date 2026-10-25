@@ -17,6 +17,7 @@ src/flota/
   servicios/     proveedores de clima (API real y simulado)
   asignacion/    reglas de asignación de entregas
   gui/           interfaz gráfica UdeM·DESPACHO (CustomTkinter, mapa vectorial 2D/3D del campus)
+  web/           la misma interfaz en HTML/JS (pywebview), conectada por PuenteWeb a CentroControl
   campus.json    puntos reales del campus UdeM y flota inicial (datos, no clases)
   campus_osm.json  edificios y caminos del campus tomados de OpenStreetMap (datos de dibujo y rutas)
   campus.py      carga campus.json, arma la flota y lee campus_osm.json
@@ -57,6 +58,7 @@ python -m pytest          # pruebas del dominio, clima, asignación y enlaces de
 python main.py            # demo por consola con el campus UdeM y clima simulado
 python main.py --real     # la demo consultando el clima real (Open-Meteo)
 python main.py --gui      # interfaz gráfica: mapa, flota, clima, solicitudes y bitácora
+python main.py --web      # la misma interfaz en versión web (ventana de pywebview)
 ```
 
 - La demo con clima simulado y las pruebas funcionan sin internet.

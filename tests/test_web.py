@@ -1,0 +1,60 @@
+"""PuenteWeb: lo que la página web puede pedirle a Python (sin abrir ninguna ventana)."""
+import base64
+import json
+
+import pytest
+
+from flota.asignacion.asignador import AsignadorEntregas
+from flota.campus import cargar_campus, cargar_geometria
+from flota.dominio.bitacora import Bitacora
+from flota.gui.centro_control import CentroControl
+from flota.servicios.calendario_simulado import CalendarioSimulado
+from flota.servicios.clima_simulado import ServicioClimaSimulado
+from flota.web.app_web import PAGINA
+from flota.web.puente import PuenteWeb
+
+
+@pytest.fixture
+def puente():
+    ubicaciones, flota = cargar_campus()
+    bitacora = Bitacora()
+    centro = CentroControl(ubicaciones, flota, AsignadorEntregas(flota, ServicioClimaSimulado(), bitacora),
+                           bitacora, cargar_geometria(), clima_real=ServicioClimaSimulado(),
+                           calendario_real=CalendarioSimulado())
+    centro.usar_clima(False)
+    centro.usar_calendario(False)
+    return PuenteWeb(centro)
+
+
+def test_todo_lo_que_devuelve_se_puede_pasar_a_json(puente):
+    id_sol = puente.crear_solicitud("cafeteria", "biblioteca", "documento", 1)
+    json.dumps([puente.geometria(), puente.estado(), puente.despachar(id_sol, "R-01")])
+
+
+def test_los_errores_vuelven_como_datos_y_no_rompen_la_pagina(puente):
+    assert "error" in puente.crear_solicitud("cafeteria", "cafeteria", "documento", 1)
+    assert "error" in puente.crear_solicitud("cafeteria", "biblioteca", "documento", "pesado")
+    assert "error" in puente.despachar(999, "R-01")
+
+
+def test_despacho_manual_y_clima_desde_la_pagina(puente):
+    puente.configurar_clima(10, 10, True, 10_000, True)
+    id_sol = puente.crear_solicitud("biblioteca", "azotea_b11", "documento", 1)
+    assert puente.despachar(id_sol, "D-01") == (False, "clima desfavorable: tormenta eléctrica")
+    puente.configurar_clima(10, 10, True, 10_000, False)
+    assert puente.despachar_auto(id_sol) == (True, "")
+    assert puente.estado()["resumen"]["en_ruta"] == 1
+
+
+def test_retratos_y_fuentes_viajan_en_base64(puente):
+    assert puente.retrato("R-01", "Ruedas").startswith("data:image/png;base64,")
+    fuentes = puente.fuentes()
+    assert set(fuentes) == {"Oswald-SemiBold", "ShareTechMono-Regular"}
+    assert base64.b64decode(fuentes["ShareTechMono-Regular"])[:4] == b"\x00\x01\x00\x00"  # TrueType
+
+
+def test_la_pagina_y_sus_archivos_existen():
+    html = PAGINA.read_text(encoding="utf-8")
+    for archivo in ("estilos.css", "app.js"):
+        assert archivo in html and (PAGINA.parent / archivo).exists()
+    assert (PAGINA.parent / "mapa2d.js").exists()

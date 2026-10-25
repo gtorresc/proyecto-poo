@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>UdeM·DESPACHO</title>
+  <link rel="stylesheet" href="estilos.css">
+</head>
+<body>
+  <main class="monitor">
+    <div class="barra" id="barra-superior">UdeM·DESPACHO</div>
+
+    <section class="mapa" id="mapa">
+      <canvas id="lienzo"></canvas>
+      <div class="pildoras" id="clima">
+        <div id="clima-datos">conectando…</div>
+        <div id="clima-semaforo" class="semaforo"></div>
+      </div>
+      <div class="ficha ficha-llamada" id="ficha-llamada" hidden>
+        <h3 class="ficha-titulo alerta" id="llamada-titulo"></h3>
+        <p id="llamada-datos"></p>
+        <p class="resultado" id="llamada-resultado"></p>
+        <div class="fila">
+          <button id="boton-auto"><kbd>A</kbd> AUTO</button>
+          <button class="secundario" data-cerrar="llamada"><kbd>ESC</kbd> CERRAR</button>
+        </div>
+      </div>
+      <div class="ficha ficha-robot" id="ficha-robot" hidden>
+        <h3 class="ficha-titulo" id="robot-titulo"></h3>
+        <div class="fila">
+          <canvas id="radar" width="190" height="180"></canvas>
+          <p id="robot-datos"></p>
+        </div>
+        <div class="fila derecha"><button class="secundario" data-cerrar="robot"><kbd>ESC</kbd> CERRAR</button></div>
+      </div>
+      <div class="controles-mapa" id="controles-mapa">
+        <button id="boton-mas">+</button>
+        <button id="boton-menos">−</button>
+      </div>
+      <div class="credito-mapa">© OpenStreetMap contributors</div>
+    </section>
+
+    <aside class="lateral">
+      <form class="panel" id="formulario">
+        <h2>NUEVA LLAMADA</h2>
+        <label>origen <select id="origen"></select></label>
+        <label>destino <select id="destino"></select></label>
+        <label>carga <select id="carga"></select></label>
+        <label>peso kg <input id="peso" type="number" min="0.1" step="0.1" value="1.5"></label>
+        <button type="submit" class="grande">CREAR LLAMADA</button>
+        <p class="resultado" id="formulario-resultado"></p>
+      </form>
+
+      <section class="panel">
+        <h2>CLIMA Y CALENDARIO</h2>
+        <div class="segmentado" id="selector-clima">
+          <button data-real="false" class="activo">Simulado</button><button data-real="true">Open-Meteo</button>
+        </div>
+        <div id="simulador">
+          <label class="deslizador">viento km/h <input id="viento" type="range" min="0" max="80" value="10"></label>
+          <label class="deslizador">lluvia % <input id="lluvia" type="range" min="0" max="100" value="10"></label>
+          <label class="deslizador">visibilidad m <input id="visibilidad" type="range" min="0" max="10000" value="10000"></label>
+          <div class="fila">
+            <label class="interruptor"><input id="dia" type="checkbox" checked> día</label>
+            <label class="interruptor"><input id="tormenta" type="checkbox"> tormenta</label>
+          </div>
+        </div>
+        <div class="segmentado" id="selector-calendario">
+          <button data-real="false" class="activo">Simulado</button><button data-real="true">Nager.Date</button>
+        </div>
+        <label class="interruptor"><input id="festivo" type="checkbox"> festivo (cafetería cerrada)</label>
+      </section>
+
+      <section class="panel radio">
+        <div class="fila"><h2>RADIO</h2><button class="secundario" id="boton-exportar">EXPORTAR</button></div>
+        <div class="registro" id="registro" aria-live="polite"></div>
+      </section>
+    </aside>
+
+    <section class="plantilla" id="plantilla"></section>
+    <div class="barra" id="barra-inferior"></div>
+  </main>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
