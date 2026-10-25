@@ -1,6 +1,8 @@
 """Formulario de nueva solicitud: se la pasa a CentroControl, que la asigna con el asignador."""
 import customtkinter as ctk
 
+from flota.gui import tema
+
 
 class PanelSolicitud(ctk.CTkFrame):
 
@@ -12,22 +14,23 @@ class PanelSolicitud(ctk.CTkFrame):
         self._centro = centro
         self._al_cambiar = al_cambiar
         nombres = list(self._clave_lugar)
-        ctk.CTkLabel(self, text="NUEVA SOLICITUD", font=ctk.CTkFont(weight="bold")).pack(
-            anchor="w", padx=10, pady=(8, 2))
+        ctk.CTkLabel(self, text="NUEVA LLAMADA", font=tema.fuente(17, True)).pack(
+            anchor="w", padx=10, pady=(6, 0))
         self._origen = self._lista("Origen", nombres)
         self._destino = self._lista("Destino", nombres)
         self._destino.set(nombres[1])
         self._carga = self._lista("Carga", list(self._clave_carga))
-        ctk.CTkLabel(self, text="Peso (kg)", font=ctk.CTkFont(size=11)).pack(anchor="w", padx=10)
+        ctk.CTkLabel(self, text="peso kg", font=tema.fuente(12), height=16).pack(anchor="w", padx=10)
         self._peso = ctk.CTkEntry(self)
         self._peso.insert(0, "1.5")
         self._peso.pack(fill="x", padx=10)
-        ctk.CTkButton(self, text="ASIGNAR", command=self._asignar).pack(fill="x", padx=10, pady=8)
-        self._resultado = ctk.CTkLabel(self, text="", wraplength=300, justify="left")
+        ctk.CTkButton(self, text="DESPACHAR AUTO", font=tema.fuente(15, True),
+                      command=self._asignar).pack(fill="x", padx=10, pady=8)
+        self._resultado = ctk.CTkLabel(self, text="", wraplength=300, justify="left", font=tema.fuente(13))
         self._resultado.pack(anchor="w", padx=10, pady=(0, 8))
 
     def _lista(self, texto, valores):
-        ctk.CTkLabel(self, text=texto, font=ctk.CTkFont(size=11)).pack(anchor="w", padx=10)
+        ctk.CTkLabel(self, text=texto.lower(), font=tema.fuente(12), height=16).pack(anchor="w", padx=10)
         menu = ctk.CTkOptionMenu(self, values=valores, dynamic_resizing=False)
         menu.pack(fill="x", padx=10)
         return menu
@@ -38,16 +41,16 @@ class PanelSolicitud(ctk.CTkFrame):
                 self._clave_lugar[self._origen.get()], self._clave_lugar[self._destino.get()],
                 self._clave_carga[self._carga.get()], float(self._peso.get().replace(",", ".")))
         except ValueError as error:  # peso no numérico, <= 0 u origen igual al destino
-            self._mostrar(f"Datos inválidos: {error}", "#c0392b")
+            self._mostrar(f"DATOS INVÁLIDOS: {error}", tema.FALLA)
             return
         ok, motivo = self._centro.despachar_auto(id_sol)
         if ok:
             robot = next(r for r in self._centro.estado()["robots"]
                          if r["mision"] and r["mision"]["solicitud"] == id_sol)
             m = robot["mision"]
-            self._mostrar(f"{robot['id']} · ${m['costo']:,.0f} · {m['tiempo_min']:.1f} min", "#2e8b57")
+            self._mostrar(f"{robot['id']} EN RUTA · ${m['costo']:,.0f} · {m['tiempo_min']:.1f} min", "#46f0b4")
         else:
-            self._mostrar(f"Pendiente: {motivo}", "#e6b800")
+            self._mostrar(f"EN ESPERA: {motivo}", tema.ALERTA)
         self._al_cambiar()
 
     def _mostrar(self, texto: str, color: str) -> None:

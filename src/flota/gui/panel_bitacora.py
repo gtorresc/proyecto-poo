@@ -1,11 +1,13 @@
-"""Bitácora en pantalla: eventos coloreados por tipo y exportación del reporte."""
+"""Radio: la bitácora como un registro de despacho, coloreada por tipo, y exportación del reporte."""
 from tkinter import filedialog
 
 import customtkinter as ctk
 
-COLOR_TIPO = {"ENTREGA_EXITOSA": "#2e8b57", "ENTREGA_FALLIDA": "#c0392b", "RECHAZO_CLIMA": "#e67e22",
-              "SOLICITUD_PENDIENTE": "#e6b800", "MANTENIMIENTO": "#5dade2",
-              "DESPACHO_RECHAZADO": "#c0392b"}
+from flota.gui import tema
+
+COLOR_TIPO = {"ENTREGA_EXITOSA": "#46f0b4", "ENTREGA_FALLIDA": tema.FALLA, "RECHAZO_CLIMA": tema.ALERTA,
+              "SOLICITUD_PENDIENTE": tema.ALERTA, "MANTENIMIENTO": "#6fb6ff",
+              "DESPACHO_RECHAZADO": tema.FALLA}
 
 
 class PanelBitacora(ctk.CTkFrame):
@@ -16,10 +18,10 @@ class PanelBitacora(ctk.CTkFrame):
         self._mostrados = 0
         cabecera = ctk.CTkFrame(self, fg_color="transparent")
         cabecera.pack(fill="x", padx=10, pady=(6, 0))
-        ctk.CTkLabel(cabecera, text="BITÁCORA", font=ctk.CTkFont(weight="bold")).pack(side="left")
-        ctk.CTkButton(cabecera, text="Exportar reporte", width=130,
+        ctk.CTkLabel(cabecera, text="RADIO", font=tema.fuente(17, True)).pack(side="left")
+        ctk.CTkButton(cabecera, text="EXPORTAR", width=90, height=24, font=tema.fuente(12),
                       command=self._exportar).pack(side="right")
-        self._texto = ctk.CTkTextbox(self, height=130, state="disabled")
+        self._texto = ctk.CTkTextbox(self, height=130, state="disabled", font=tema.fuente(12), wrap="word")
         self._texto.pack(fill="both", expand=True, padx=10, pady=8)
         for tipo, color in COLOR_TIPO.items():
             self._texto.tag_config(tipo, foreground=color)
@@ -31,8 +33,9 @@ class PanelBitacora(ctk.CTkFrame):
             return
         self._texto.configure(state="normal")
         for e in bitacora["ultimos"][-nuevos:]:
-            robot = f" [{e['robot']}]" if e["robot"] else ""
-            self._texto.insert("end", f"{e['hora']} {e['nombre'].upper()}{robot}: {e['mensaje']}\n", e["tipo"])
+            robot = f" {e['robot']}" if e["robot"] else ""
+            self._texto.insert("end", f"{e['hora'][:5]}{robot} {e['nombre'].upper()}\n", e["tipo"])
+            self._texto.insert("end", f"  {e['mensaje']}\n")
         self._texto.configure(state="disabled")
         self._texto.see("end")
         self._mostrados = bitacora["total"]
