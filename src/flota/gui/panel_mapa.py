@@ -1,4 +1,4 @@
-"""Mapa vectorial del campus en 2D (cenital) o 3D (oblicua, como Dispatch), sin tiles ni internet.
+"""Mapa vectorial del campus en 2D (cenital) o 3D (oblicua), sin tiles ni internet.
 
 Dibuja la geometría de OSM que entrega CentroControl y lo que dice estado(): robots, rutas y balizas.
 No decide nada: un clic en una baliza o un robot solo avisa a la ventana.

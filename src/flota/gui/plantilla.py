@@ -1,4 +1,4 @@
-"""Plantilla de robots (fila de tarjetas, como el roster de Dispatch) y ficha con el radar."""
+"""Plantilla de robots (una fila de tarjetas con su estado) y ficha con el radar."""
 import math
 import threading
 

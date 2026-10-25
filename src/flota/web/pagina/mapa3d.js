@@ -1,4 +1,4 @@
-// Campus en 3D con three.js: edificios extruidos con aristas claras, como la ciudad de Dispatch.
+// Campus en 3D con three.js: edificios extruidos con aristas claras.
 // La misma cámara pasa de vista cenital (2D) a oblicua (3D) con una transición. Robots, rutas y
 // balizas se dibujan encima en un canvas 2D, con las mismas funciones que el mapa de respaldo.
 import * as THREE from "three";

@@ -1,4 +1,4 @@
-"""Clima: píldoras sobre el mapa (como Dispatch) y el simulador con el interruptor real/simulado."""
+"""Clima: píldoras sobre el mapa y el simulador con el interruptor real/simulado."""
 import customtkinter as ctk
 
 from flota.gui import tema
