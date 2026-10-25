@@ -5,6 +5,13 @@ from math import asin, cos, radians, sin, sqrt
 RADIO_TIERRA_KM = 6371.0
 
 
+def distancia_haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """Distancia en línea recta entre dos coordenadas; la usan Ubicacion y Ruta."""
+    lat1, lon1, lat2, lon2 = map(radians, (lat1, lon1, lat2, lon2))
+    a = sin((lat2 - lat1) / 2) ** 2 + cos(lat1) * cos(lat2) * sin((lon2 - lon1) / 2) ** 2
+    return 2 * RADIO_TIERRA_KM * asin(sqrt(a))
+
+
 class Zona(Enum):
     """Tipo de lugar del campus; define qué robots pueden llegar."""
     EDIFICIO = "edificio"
@@ -47,10 +54,7 @@ class Ubicacion:
 
     def distancia_km(self, otra: "Ubicacion") -> float:
         """Distancia en línea recta (fórmula de Haversine)."""
-        lat1, lon1 = radians(self._latitud), radians(self._longitud)
-        lat2, lon2 = radians(otra.latitud), radians(otra.longitud)
-        a = sin((lat2 - lat1) / 2) ** 2 + cos(lat1) * cos(lat2) * sin((lon2 - lon1) / 2) ** 2
-        return 2 * RADIO_TIERRA_KM * asin(sqrt(a))
+        return distancia_haversine_km(self._latitud, self._longitud, otra.latitud, otra.longitud)
 
     def __repr__(self) -> str:
         return f"Ubicacion({self._nombre!r}, {self._zona.value})"

@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from flota.campus import cargar_campus, cargar_geometria
+from flota.campus import cargar_campus, cargar_geometria, crear_red_senderos
 from flota.dominio.estado_robot import EstadoRobot
 from flota.dominio.ubicacion import Ubicacion, Zona
 
@@ -93,3 +93,21 @@ def test_el_script_convierte_la_respuesta_de_overpass(script_osm):
 def test_el_script_falla_si_overpass_no_trae_el_perimetro(script_osm):
     with pytest.raises(ValueError):
         script_osm.convertir({"elements": []})
+
+
+def test_los_senderos_reales_conectan_todos_los_puntos_de_entrega():
+    sitio, _ = cargar_campus()
+    red = crear_red_senderos(cargar_geometria())
+    lugares = list(sitio.values())
+    for i, origen in enumerate(lugares):
+        for destino in lugares[i + 1:]:
+            ruta = red.ruta(origen, destino)
+            assert ruta is not None, f"{origen.nombre} y {destino.nombre} no están conectados"
+            assert ruta.distancia_km >= origen.distancia_km(destino)
+
+
+def test_los_robots_del_campus_usan_los_senderos():
+    sitio, flota = cargar_campus()
+    o, d = sitio["cafeteria"], sitio["biblioteca"]
+    assert len(flota.buscar("R-01").trazar_ruta(o, d).puntos) > 2  # pasa por los senderos
+    assert len(flota.buscar("D-01").trazar_ruta(o, d).puntos) == 2  # vuela recto

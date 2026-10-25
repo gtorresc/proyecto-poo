@@ -4,10 +4,11 @@ from typing import Optional
 
 from flota.dominio.bateria import Bateria
 from flota.dominio.estado_robot import EstadoRobot
+from flota.dominio.ruta import RedSenderos, Ruta
 from flota.dominio.ubicacion import Ubicacion, Zona
 
 MARGEN_MANTENIMIENTO = 10  # puntos de batería sobre la reserva que disparan el mantenimiento
-FACTOR_RODEO_TERRESTRE = 1.3  # supuesto S5: los robots terrestres siguen senderos
+FACTOR_RODEO_TERRESTRE = 1.3  # supuesto S5: rodeo estimado cuando no hay red de senderos
 
 
 class Robot(ABC):
@@ -15,7 +16,7 @@ class Robot(ABC):
 
     def __init__(self, id_robot: str, ubicacion: Ubicacion, carga_maxima_kg: float,
                  velocidad_kmh: float, tiene_control_temperatura: bool = False,
-                 nivel_bateria: float = 100.0):
+                 nivel_bateria: float = 100.0, red: Optional[RedSenderos] = None):
         if not id_robot or not id_robot.strip():
             raise ValueError("El robot necesita un identificador")
         if not isinstance(ubicacion, Ubicacion):
@@ -32,6 +33,7 @@ class Robot(ABC):
         self._bateria = Bateria(nivel_bateria)  # composición: nace con el robot
         self._estado = EstadoRobot.DISPONIBLE
         self._carga_actual = None
+        self._red = red  # asociación: todos los robots comparten la misma red del campus
 
     # --- Lo que cada subtipo debe definir ---------------------------------
     @abstractmethod
@@ -60,8 +62,13 @@ class Robot(ABC):
         return False
 
     # --- Cálculos comunes -------------------------------------------------
+    def trazar_ruta(self, origen: Ubicacion, destino: Ubicacion) -> Ruta:
+        """Por tierra: el camino más corto por los senderos. Sin red (o sin camino), se estima el rodeo."""
+        ruta = self._red.ruta(origen, destino) if self._red is not None else None
+        return ruta or Ruta.linea_recta(origen, destino, self.factor_ruta())
+
     def _distancia_ruta_km(self, origen: Ubicacion, destino: Ubicacion) -> float:
-        return origen.distancia_km(destino) * self.factor_ruta()
+        return self.trazar_ruta(origen, destino).distancia_km
 
     def calcular_tiempo_min(self, origen: Ubicacion, destino: Ubicacion) -> float:
         return self._distancia_ruta_km(origen, destino) / self._velocidad_kmh * 60
@@ -166,9 +173,9 @@ class RobotRuedas(Robot):
 
     def __init__(self, id_robot: str, ubicacion: Ubicacion, carga_maxima_kg: float = 20,
                  velocidad_kmh: float = 12, tiene_control_temperatura: bool = False,
-                 nivel_bateria: float = 100.0):
+                 nivel_bateria: float = 100.0, red: Optional[RedSenderos] = None):
         super().__init__(id_robot, ubicacion, carga_maxima_kg, velocidad_kmh,
-                         tiene_control_temperatura, nivel_bateria)
+                         tiene_control_temperatura, nivel_bateria, red)
 
     def zonas_accesibles(self) -> set[Zona]:
         return {Zona.EDIFICIO}
@@ -185,9 +192,9 @@ class RobotOrugas(Robot):
 
     def __init__(self, id_robot: str, ubicacion: Ubicacion, carga_maxima_kg: float = 40,
                  velocidad_kmh: float = 6, tiene_control_temperatura: bool = False,
-                 nivel_bateria: float = 100.0):
+                 nivel_bateria: float = 100.0, red: Optional[RedSenderos] = None):
         super().__init__(id_robot, ubicacion, carga_maxima_kg, velocidad_kmh,
-                         tiene_control_temperatura, nivel_bateria)
+                         tiene_control_temperatura, nivel_bateria, red)
 
     def zonas_accesibles(self) -> set[Zona]:
         return {Zona.EDIFICIO, Zona.ZONA_VERDE}
@@ -207,9 +214,9 @@ class Dron(Robot):
 
     def __init__(self, id_robot: str, ubicacion: Ubicacion, carga_maxima_kg: float = 3,
                  velocidad_kmh: float = 30, tiene_control_temperatura: bool = False,
-                 nivel_bateria: float = 100.0):
+                 nivel_bateria: float = 100.0, red: Optional[RedSenderos] = None):
         super().__init__(id_robot, ubicacion, carga_maxima_kg, velocidad_kmh,
-                         tiene_control_temperatura, nivel_bateria)
+                         tiene_control_temperatura, nivel_bateria, red)
 
     def zonas_accesibles(self) -> set[Zona]:
         return {Zona.EDIFICIO, Zona.ZONA_VERDE, Zona.AZOTEA}
@@ -220,8 +227,8 @@ class Dron(Robot):
     def consumo_por_km(self) -> float:
         return 10
 
-    def factor_ruta(self) -> float:
-        return 1.0
+    def trazar_ruta(self, origen: Ubicacion, destino: Ubicacion) -> Ruta:
+        return Ruta.linea_recta(origen, destino)  # vuela: no sigue senderos
 
     def requiere_clima(self) -> bool:
         return True
