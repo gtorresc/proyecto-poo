@@ -46,6 +46,8 @@ button, select, input { font: inherit; color: inherit; }
 .controles-mapa { position: absolute; right: 12px; bottom: 12px; display: grid; gap: 4px; width: 110px; }
 .controles-mapa button { background: #0c1a1c; border: 1px solid var(--fosforo); }
 .controles-mapa button:hover { background: var(--boton); }
+.etiqueta-edificio { position: absolute; pointer-events: none; padding: 2px 8px; white-space: nowrap;
+  background: #0c1a1c; border: 1px solid var(--alerta); color: #f3efe4; font-size: 12px; }
 .credito-mapa { position: absolute; left: 8px; bottom: 4px; font-size: 10px; color: #b9fff2; opacity: .8; }
 
 .ficha { position: absolute; left: 12px; width: 360px; background: var(--papel); color: var(--tinta);

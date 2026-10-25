@@ -3,6 +3,7 @@ import pytest
 import requests
 
 from flota.gui import retratos
+from flota.gui.capa_clima import MARGEN_NUBES_M, gotas, posicion_nube, sprite_nube
 from flota.gui.panel_clima import rumbo, texto_clima
 from flota.gui.panel_mapa import ZOOM_MAX, Camara, caras_visibles
 from flota.gui.plantilla import EJES, puntos_radar
@@ -99,3 +100,29 @@ def test_solo_se_dibujan_las_paredes_que_miran_a_la_camara(camara):
     assert paredes == [([-100, -100], [100, -100])]  # la del sur; las otras tres no se ven
     al_reves = list(reversed(CUADRADO))  # el sentido del contorno no cambia el resultado
     assert len(caras_visibles(al_reves, [camara.rotar(x, y) for x, y in al_reves])) == 1
+
+
+# --- Clima dibujado sobre el mapa ----------------------------------------------------
+
+
+def test_las_nubes_avanzan_con_el_viento_y_vuelven_a_entrar():
+    limites, nube = [-300, -300, 300, 300], {"x": 0, "y": 0}
+    assert posicion_nube(nube, [0, 5], 0, limites) == (0, 0)
+    x, y = posicion_nube(nube, [0, 5], 1, limites)
+    assert x == 0 and y > 0  # viento hacia el norte
+    for t in range(0, 500, 7):
+        x, y = posicion_nube(nube, [3, -4], t, limites)
+        assert -300 - MARGEN_NUBES_M <= x <= 300 + MARGEN_NUBES_M and -300 - MARGEN_NUBES_M <= y <= 300 + MARGEN_NUBES_M
+
+
+def test_las_gotas_quedan_dentro_de_la_pantalla_y_caen():
+    antes = gotas(50, 400, 300, 20, 0)
+    despues = gotas(50, 400, 300, 20, 0.01)
+    assert len(antes) == 50 and all(0 <= x < 400 and 0 <= y < 300 for x, y in antes + despues)
+    assert sum(d[1] > a[1] for a, d in zip(antes, despues)) > 40  # casi todas bajaron (las demás volvieron arriba)
+
+
+def test_la_nube_es_transparente_en_los_bordes():
+    img = sprite_nube(semilla=1, ancho_px=200, alto_px=120, opacidad=0.6)
+    assert img.size == (200, 120)
+    assert img.getpixel((0, 0))[3] == 0 and img.getpixel((100, 60))[3] > 0

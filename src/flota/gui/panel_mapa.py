@@ -4,11 +4,13 @@ Dibuja la geometría de OSM que entrega CentroControl y lo que dice estado(): ro
 No decide nada: un clic en una baliza o un robot solo avisa a la ventana.
 """
 import math
+import time
 
 import customtkinter as ctk
 from PIL import Image, ImageDraw, ImageTk
 
 from flota.gui import tema
+from flota.gui.capa_clima import CapaClima
 from flota.gui.retratos import CARPETA
 
 INTERVALO_MS = 50
@@ -115,7 +117,10 @@ class PanelMapa(ctk.CTkFrame):
         self.canvas = ctk.CTkCanvas(self, bg=tema.DIA["fondo_mapa"], highlightthickness=0)
         self.canvas.pack(fill="both", expand=True, padx=2, pady=2)
         self._botones()
+        self._clima = CapaClima(self.canvas, self._geo)
         self.canvas.bind("<Configure>", self._al_redimensionar)
+        self.canvas.bind("<Motion>", self._sobre)
+        self.canvas.bind("<Leave>", lambda _: self.canvas.delete("etiqueta"))
         self.canvas.bind("<ButtonPress-1>", lambda e: setattr(self, "_arrastre", (e.x, e.y, e.x, e.y)))
         self.canvas.bind("<B1-Motion>", self._arrastrar)
         self.canvas.bind("<ButtonRelease-1>", self._soltar)
@@ -179,12 +184,12 @@ class PanelMapa(ctk.CTkFrame):
                           width=max(1, cam.escala * (6 if calle else 1.6)), capstyle="round", tags="fondo")
         edificios = self._geo["edificios"]
         for i in sorted(range(len(edificios)), reverse=True, key=lambda i: cam.profundidad(*edificios[i]["contorno"][0])):
-            self._dibujar_edificio(edificios[i], i in self._resaltados)
+            self._dibujar_edificio(edificios[i], i in self._resaltados, f"edificio{i}")
         c.create_text(cam.ancho - 8, 8, text=self._geo["fuente"].split(",")[0], anchor="ne",
                       fill=p["arista"], font=(tema.MONO, 9), tags="fondo")
         c.tag_lower("fondo")
 
-    def _dibujar_edificio(self, edificio: dict, resaltado: bool) -> None:
+    def _dibujar_edificio(self, edificio: dict, resaltado: bool, etiqueta: str) -> None:
         c, cam, p = self.canvas, self.camara, self._paleta
         techo, pared, arista = (RESALTADO if resaltado else
                                 (p["edificio"], p["pared"], p["arista"]) if edificio["en_campus"]
@@ -193,9 +198,30 @@ class PanelMapa(ctk.CTkFrame):
         if alto:
             for a, b in caras_visibles(contorno, [cam.rotar(x, y) for x, y in contorno]):
                 c.create_polygon(*cam.proyectar(*a), *cam.proyectar(*b), *cam.proyectar(*b, alto),
-                                 *cam.proyectar(*a, alto), fill=pared, outline=arista, tags="fondo")
+                                 *cam.proyectar(*a, alto), fill=pared, outline=arista, tags=("fondo", etiqueta))
         c.create_polygon([v for x, y in contorno for v in cam.proyectar(x, y, alto)], fill=techo, outline=arista,
-                         width=1.5 if edificio["en_campus"] else 1, tags="fondo")
+                         width=1.5 if edificio["en_campus"] else 1, tags=("fondo", etiqueta))
+
+    def _sobre(self, e) -> None:
+        """Al pasar el mouse por un edificio con nombre, lo muestra en una etiqueta junto al cursor."""
+        c = self.canvas
+        c.delete("etiqueta")
+        for item in reversed(c.find_overlapping(e.x, e.y, e.x, e.y)):  # el de más arriba primero
+            nombre = next((self._geo["edificios"][int(t[8:])]["nombre"] for t in c.gettags(item)
+                           if t.startswith("edificio")), None)
+            if nombre:
+                texto = c.create_text(e.x + 14, e.y - 16, text=nombre, anchor="sw", fill="#f3efe4",
+                                      font=(tema.MONO, 11), tags="etiqueta")
+                x0, y0, x1, y1 = c.bbox(texto)
+                if x1 + 8 > self.camara.ancho:  # no se sale por la derecha: va al otro lado del cursor
+                    c.move(texto, -(x1 - x0) - 28, 0)
+                    x0, y0, x1, y1 = c.bbox(texto)
+                c.create_rectangle(x0 - 6, y0 - 3, x1 + 6, y1 + 3, fill="#0c1a1c", outline=tema.ALERTA,
+                                   tags="etiqueta")
+                c.tag_raise(texto)
+                return
+            if any(t.startswith("edificio") for t in c.gettags(item)):
+                return  # edificio sin nombre en OSM: nada que mostrar
 
     @staticmethod
     def _scanlines(ancho: int, alto: int):
@@ -226,6 +252,7 @@ class PanelMapa(ctk.CTkFrame):
             if len(r["recorrido"]) >= 2:
                 c.create_line([v for x, y in r["recorrido"] for v in cam.proyectar(x, y)],
                               fill=tema.FRANJA[r["franja"]], width=3, dash=(6, 4), tags="vivo")
+        self._clima.luces(estado["ambiente"], cam)
         self._en_pantalla = {"balizas": [], "robots": []}
         for b in estado["balizas"]:
             alto = self._geo["edificios"][b["edificio"]]["altura"] if b["edificio"] is not None else 0
@@ -246,8 +273,10 @@ class PanelMapa(ctk.CTkFrame):
             sx, sy = cam.proyectar(r["x"], r["y"], z)
             self._dibujar_robot(r, sx, sy)
             self._en_pantalla["robots"].append((r["id"], (sx, sy)))
+        self._clima.encima(estado["ambiente"], cam, time.monotonic())
         if self._lineas:
             c.create_image(0, 0, image=self._lineas, anchor="nw", tags="vivo")
+        c.tag_raise("etiqueta")
 
     def _dibujar_robot(self, r: dict, sx: float, sy: float) -> None:
         c, color = self.canvas, tema.FRANJA[r["franja"]]

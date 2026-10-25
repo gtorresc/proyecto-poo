@@ -4,7 +4,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white" alt="Python 3.10 o superior">
-  <img src="https://img.shields.io/badge/pruebas-194%20en%20verde-3f9a6b" alt="194 pruebas en verde">
+  <img src="https://img.shields.io/badge/pruebas-199%20en%20verde-3f9a6b" alt="199 pruebas en verde">
   <img src="https://img.shields.io/badge/interfaz-CustomTkinter%20%C2%B7%20web%203D-1d7f7b" alt="Interfaz CustomTkinter y web 3D">
   <a href="LICENSE.md"><img src="https://img.shields.io/badge/licencia-MIT-f08a2c" alt="Licencia MIT"></a>
 </p>
@@ -64,7 +64,8 @@ sistema le dice exactamente qué regla lo impide.
 
 **Interfaz**
 - El campus real (95 edificios y 300 caminos de OpenStreetMap) dibujado en 2D o 3D, sin tiles y sin internet.
-- Balizas sobre los edificios, rutas animadas, plantilla de robots con su estado y paleta de día o de noche según el clima.
+- Balizas sobre los edificios, rutas animadas, plantilla de robots con su estado y el nombre de cada bloque al pasar el mouse.
+- El clima se ve en el mapa: nubes que avanzan con el viento, lluvia, niebla, relámpagos y luces encendidas de noche.
 - Dos interfaces sobre el mismo modelo de presentación: escritorio (CustomTkinter) y web (pywebview + three.js).
 
 **APIs gratuitas, sin API key**
@@ -120,6 +121,7 @@ python -m pytest          # pruebas
 | Crear una llamada | formulario "NUEVA LLAMADA": aparece una baliza sobre el edificio de origen |
 | Despachar a mano | clic en la baliza y luego en un robot de la plantilla |
 | Despachar en automático | botón AUTO, o tecla `A` con la llamada abierta |
+| Ver el nombre de un bloque | pasar el mouse por encima del edificio |
 | Ver el radar de un robot | clic en su tarjeta (sin llamada abierta) |
 | Vista 2D o 3D, girar | `Tab` y `R`, o los botones del mapa; rueda para el zoom, arrastre para moverse |
 | Rotar libremente (web) | botón derecho del mouse |

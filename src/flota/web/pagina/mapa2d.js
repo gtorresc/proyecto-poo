@@ -1,5 +1,6 @@
 // Mapa 2D del campus en un <canvas>: vista cenital, zoom y arrastre limitados al campus.
 // Es el respaldo de la vista 3D: solo usa Canvas 2D, que funciona en cualquier navegador.
+import { dibujarEncima, dibujarLuces, puntoEnPoligono } from "./clima.js";
 
 export const PALETA = {
   dia: { fondo: "#1d7f7b", campus: "#23918b", edificio: "#2bb3a3", pared: "#1f8f84", arista: "#b9fff2",
@@ -53,7 +54,7 @@ export class Mapa2D {
     let arrastre = null;
     this.lienzo.addEventListener("pointerdown", e => { arrastre = { x0: e.offsetX, y0: e.offsetY, x: e.offsetX, y: e.offsetY }; });
     this.lienzo.addEventListener("pointermove", e => {
-      if (!arrastre) return;
+      if (!arrastre) return this._sobre(e.offsetX, e.offsetY);
       this._mover(e.offsetX - arrastre.x, e.offsetY - arrastre.y);
       arrastre.x = e.offsetX; arrastre.y = e.offsetY;
     });
@@ -62,6 +63,12 @@ export class Mapa2D {
       arrastre = null;
     });
     this.lienzo.addEventListener("wheel", e => { e.preventDefault(); this.acercar(e.deltaY < 0 ? 1.2 : 1 / 1.2); });
+  }
+
+  _sobre(sx, sy) {  // nombre del edificio bajo el cursor (del más cercano a la cámara al más lejano)
+    const x = this.centro[0] + (sx - this.ancho / 2) / this.escala, y = this.centro[1] - (sy - this.alto / 2) / this.escala;
+    const e = [...this.geo.edificios].reverse().find(e => puntoEnPoligono(x, y, e.contorno));
+    this.avisos.sobre(e ? e.nombre : null, sx, sy);
   }
 
   _clic(sx, sy) {
@@ -114,6 +121,7 @@ export class Mapa2D {
       c.beginPath(); r.recorrido.forEach(([x, y], i) => c[i ? "lineTo" : "moveTo"](...this.proyectar(x, y)));
       c.setLineDash([6, 4]); c.strokeStyle = FRANJA[r.franja]; c.lineWidth = 3; c.stroke(); c.setLineDash([]);
     }
+    dibujarLuces(c, estado.ambiente, this.geo, (x, y) => this.proyectar(x, y));
     this.enPantalla = { balizas: [], robots: [] };
     for (const b of estado.balizas) {
       const [x, y] = this.proyectar(b.x, b.y);
@@ -125,7 +133,8 @@ export class Mapa2D {
       dibujarRobot(c, x, y, r, this.retratos[r.id]);
       this.enPantalla.robots.push([r.id, x, y]);
     }
-    dibujarNubes(c, this.ancho, this.alto, estado.clima, performance.now() / 1000);
+    dibujarEncima(c, this.ancho, this.alto, estado.ambiente, this.geo, (x, y) => this.proyectar(x, y), this.escala,
+                  performance.now() / 1000, true);
   }
 }
 
@@ -144,24 +153,4 @@ export function dibujarRobot(c, x, y, r, imagen) {
     c.save(); c.beginPath(); c.arc(x, y, 12, 0, 2 * Math.PI); c.clip(); c.drawImage(imagen, x - 12, y - 12, 24, 24); c.restore();
   }
   c.fillStyle = "#f3efe4"; c.font = "12px Oswald-SemiBold"; c.textAlign = "center"; c.textBaseline = "top"; c.fillText(r.id, x, y + 18);
-}
-
-// Sombras de nubes que cruzan el mapa con el viento; más densas cuanto más llueve
-const NUBES = Array.from({ length: 7 }, (_, i) => ({ x: (i * 0.37) % 1, y: (i * 0.61) % 1, r: 0.12 + (i % 3) * 0.05 }));
-
-export function dibujarNubes(c, ancho, alto, clima, segundos) {
-  if (!clima || clima.consultando || !clima.disponible || (clima.lluvia < 40 && !clima.tormenta)) return;
-  const densidad = Math.min(1, (clima.tormenta ? 100 : clima.lluvia) / 100);
-  const rumbo = ((clima.direccion ?? 270) + 180) * Math.PI / 180;  // el viento viene de "direccion": las nubes van al otro lado
-  const avance = segundos * (2 + clima.viento / 4) / 1000;
-  NUBES.slice(0, Math.ceil(densidad * NUBES.length)).forEach(n => {
-    const x = (((n.x + Math.sin(rumbo) * avance) % 1) + 1) % 1 * (ancho + 400) - 200;
-    const y = (((n.y - Math.cos(rumbo) * avance) % 1) + 1) % 1 * (alto + 400) - 200;
-    const radio = n.r * Math.max(ancho, alto);
-    const g = c.createRadialGradient(x, y, 0, x, y, radio);
-    g.addColorStop(0, `rgba(10, 30, 32, ${0.35 * densidad})`);
-    g.addColorStop(1, "rgba(10, 30, 32, 0)");
-    c.fillStyle = g;
-    c.fillRect(x - radio, y - radio, 2 * radio, 2 * radio);
-  });
 }

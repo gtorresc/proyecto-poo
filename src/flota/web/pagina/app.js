@@ -29,7 +29,7 @@ async function iniciar() {
 }
 
 async function crearMapa(geo) {
-  const avisos = { baliza: abrirLlamada, robot: elegirRobot };
+  const avisos = { baliza: abrirLlamada, robot: elegirRobot, sobre: mostrarNombreEdificio };
   try {
     const { Mapa3D } = await import("./mapa3d.js");
     return new Mapa3D($("lienzo"), geo, avisos);
@@ -38,6 +38,16 @@ async function crearMapa(geo) {
     document.querySelectorAll("[data-3d]").forEach(b => b.hidden = true);
     return new Mapa2D($("lienzo"), geo, avisos);
   }
+}
+
+function mostrarNombreEdificio(nombre, x, y) {
+  const etiqueta = $("etiqueta-edificio");
+  etiqueta.hidden = !nombre;  // los edificios sin nombre en OpenStreetMap no muestran nada
+  if (!nombre) return;
+  etiqueta.textContent = nombre;
+  const ancho = $("mapa").clientWidth, derecha = x + 14 + etiqueta.offsetWidth > ancho;
+  etiqueta.style.left = `${derecha ? x - 14 - etiqueta.offsetWidth : x + 14}px`;
+  etiqueta.style.top = `${y - 30}px`;
 }
 
 async function ciclo() {

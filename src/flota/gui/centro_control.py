@@ -4,6 +4,7 @@ No sabe de tkinter ni de HTML. Traduce el dominio a datos simples (dicts, listas
 convierte los clics del operador en llamadas al dominio. Las reglas siguen en el dominio.
 """
 import math
+import random
 import threading
 import time
 from datetime import date
@@ -28,8 +29,9 @@ SEGUNDOS_POR_MINUTO = 6  # 1 min de viaje simulado = 6 s en pantalla
 MIN_VIAJE_S = 3  # los tramos cortos durarían menos de un parpadeo
 RECARGA_S = 10  # tiempo en pantalla que un robot pasa en mantenimiento
 ALTURA_VUELO_M = 30
-SEPARACION_M = 16  # robots quietos en el mismo lugar se dibujan en ronda, para que no se tapen
+SEPARACION_M = 24  # robots quietos en el mismo lugar se dibujan en ronda, para que no se tapen
 EVENTOS_VISIBLES = 50
+NUBES = 10  # cuántas nubes cruzan el mapa como máximo
 
 TIPOS_CARGA = {  # clave -> (nombre en pantalla, fábrica a partir del peso)
     "documento": ("Documento", lambda peso: Documento("Documento", peso)),
@@ -106,7 +108,11 @@ class CentroControl:
                                 "x": x, "y": y, "edificio": edificio})
         sur_oeste = a_metros(geo["limites"]["sur"], geo["limites"]["oeste"])
         norte_este = a_metros(geo["limites"]["norte"], geo["limites"]["este"])
+        azar = random.Random(7)  # fijo: las luces y las nubes salen igual en las dos interfaces
+        nubes = [{"x": azar.uniform(sur_oeste[0], norte_este[0]), "y": azar.uniform(sur_oeste[1], norte_este[1]),
+                  "radio": azar.uniform(70, 140), "semilla": azar.randrange(10_000)} for _ in range(NUBES)]
         return {"fuente": geo["fuente"], "limites": [*sur_oeste, *norte_este],
+                "luces": [luz for e in edificios if e["en_campus"] for luz in _luces(e, azar)], "nubes": nubes,
                 "perimetro": metros(geo["perimetro"]), "edificios": edificios,
                 "caminos": [{"tipo": c["tipo"], "puntos": metros(c["puntos"])} for c in geo["caminos"]],
                 "ubicaciones": ubicaciones,
@@ -251,8 +257,9 @@ class CentroControl:
     # --- Lo que se dibuja ----------------------------------------------------
     def estado(self) -> dict:
         ahora = self._reloj()
+        clima = self._clima()
         return {"robots": self._robots(ahora), "balizas": self._balizas(ahora),
-                "clima": self._clima(), "calendario": self._calendario(),
+                "clima": clima, "ambiente": ambiente(clima), "calendario": self._calendario(),
                 "bitacora": self._eventos(), "resumen": self._resumen()}
 
     def _robots(self, ahora: float) -> list[dict]:
@@ -340,6 +347,34 @@ class CentroControl:
         return {"robots": len(robots), "disponibles": cuenta(EstadoRobot.DISPONIBLE),
                 "en_ruta": cuenta(EstadoRobot.EN_RUTA), "mantenimiento": cuenta(EstadoRobot.MANTENIMIENTO),
                 "esperando": len(self._bandeja) + len(self._asignador.pendientes)}
+
+
+def _luces(edificio: dict, azar: random.Random) -> list[list[float]]:
+    """Ventanas encendidas de noche: puntos sobre el techo, entre el centro y las esquinas."""
+    contorno = edificio["contorno"]
+    cx = sum(p[0] for p in contorno) / len(contorno)
+    cy = sum(p[1] for p in contorno) / len(contorno)
+    luces = [[cx, cy, edificio["altura"]]]
+    for x, y in azar.sample(contorno, min(2, len(contorno))):
+        f = azar.uniform(0.3, 0.6)
+        luces.append([x + (cx - x) * f, y + (cy - y) * f, edificio["altura"]])
+    return luces
+
+
+def ambiente(clima: dict) -> dict:
+    """Cuánto se nota cada efecto del clima en el mapa (0 a 1). Las dos interfaces dibujan lo mismo."""
+    if clima.get("consultando") or not clima.get("disponible"):
+        return {"nubes": 0.2, "lluvia": 0.0, "niebla": 0.0, "tormenta": False, "noche": False, "viento": [0.0, 0.0]}
+    tormenta, prob = clima["tormenta"], clima["lluvia"] / 100
+    lluvia = max(0.0, (prob - 0.4) / 0.6) if prob >= 0.5 else 0.0
+    visibilidad = clima["visibilidad"]
+    rumbo = math.radians((clima["direccion"] if clima["direccion"] is not None else 270) + 180)  # hacia donde va
+    velocidad = clima["viento"] / 3.6  # m/s
+    return {"nubes": min(1.0, 0.2 + prob * 0.8 + (0.3 if tormenta else 0)),
+            "lluvia": max(lluvia, 0.8) if tormenta else lluvia,
+            "niebla": 0.0 if visibilidad is None else max(0.0, min(1.0, (2000 - visibilidad) / 2000)),
+            "tormenta": tormenta, "noche": not clima["es_de_dia"],
+            "viento": [velocidad * math.sin(rumbo), velocidad * math.cos(rumbo)]}
 
 
 def crear_centro(real: bool = False) -> CentroControl:

@@ -177,3 +177,21 @@ def test_los_robots_quietos_en_el_mismo_lugar_no_se_tapan(centro):
     posiciones = {(round(r["x"], 1), round(r["y"], 1)) for r in centro.estado()["robots"]}
     assert len(posiciones) == 4  # los cuatro empiezan en la estación
 
+
+def test_el_ambiente_del_mapa_sale_del_clima(centro):
+    centro.configurar_clima(viento=36, lluvia=10, dia=True)
+    a = centro.estado()["ambiente"]
+    assert a["lluvia"] == 0 and not a["noche"] and a["niebla"] == 0 and a["nubes"] < 0.5
+    assert a["viento"] == pytest.approx([0, 10], abs=1e-9)  # viento del sur (180°): las nubes van al norte
+    centro.configurar_clima(viento=10, lluvia=100, dia=False, visibilidad=500, tormenta=True)
+    a = centro.estado()["ambiente"]
+    assert a["lluvia"] == 1 and a["noche"] and a["tormenta"] and a["nubes"] == 1
+    assert a["niebla"] == pytest.approx(0.75)
+
+
+def test_luces_y_nubes_son_fijas_y_caen_en_el_mapa(centro):
+    geo = centro.geometria()
+    x0, y0, x1, y1 = geo["limites"]
+    assert len(geo["nubes"]) == 10 and all(x0 <= n["x"] <= x1 and y0 <= n["y"] <= y1 for n in geo["nubes"])
+    assert len(geo["luces"]) > 30 and all(z > 0 for _, _, z in geo["luces"])
+

@@ -3,7 +3,8 @@
 // balizas se dibujan encima en un canvas 2D, con las mismas funciones que el mapa de respaldo.
 import * as THREE from "three";
 import { OrbitControls } from "./vendor/OrbitControls.js";
-import { PALETA, RESALTADO, FRANJA, dibujarBaliza, dibujarNubes, dibujarRobot } from "./mapa2d.js";
+import { PALETA, RESALTADO, FRANJA, dibujarBaliza, dibujarRobot } from "./mapa2d.js";
+import { ALTURA_NUBES_M, dibujarEncima, dibujarLuces, posicionNube, spriteNube } from "./clima.js";
 
 const CALLES = new Set(["residential", "tertiary", "unclassified", "living_street"]);
 const POLAR_3D = 0.95, POLAR_2D = 0.0001;  // ángulo desde la vertical
@@ -42,6 +43,15 @@ export class Mapa3D {
 
     this.materiales = this._crearMateriales();
     this._construirCampus();
+    this.nubes = geo.nubes.map(n => {  // nubes de verdad: planos semitransparentes a 70 m de altura
+      const material = new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(spriteNube(n.semilla)),
+                                                     transparent: true, depthWrite: false, opacity: 0 });
+      const plano = new THREE.Mesh(new THREE.PlaneGeometry(2 * n.radio, 2 * n.radio), material);
+      plano.rotation.x = -Math.PI / 2;
+      this.escena.add(plano);
+      return plano;
+    });
+    this.rayo = new THREE.Raycaster();
     this.superposicion = this._crearSuperposicion();
     this._escucharClics();
     new ResizeObserver(() => this._redimensionar()).observe(lienzo);
@@ -174,6 +184,15 @@ export class Mapa3D {
   _escucharClics() {
     let inicio = null;
     this.lienzo.addEventListener("pointerdown", e => { inicio = [e.offsetX, e.offsetY]; });
+    this.lienzo.addEventListener("pointermove", e => {  // nombre del edificio bajo el cursor
+      if (e.buttons) return this.avisos.sobre(null);
+      const puntero = new THREE.Vector2(e.offsetX / this.lienzo.clientWidth * 2 - 1, -e.offsetY / this.lienzo.clientHeight * 2 + 1);
+      this.rayo.setFromCamera(puntero, this.camara);
+      const [golpe] = this.rayo.intersectObjects(this.edificios.map(ed => ed.cuerpo), false);
+      const i = golpe ? this.edificios.findIndex(ed => ed.cuerpo === golpe.object) : -1;
+      this.avisos.sobre(i >= 0 ? this.geo.edificios[i].nombre : null, e.offsetX, e.offsetY);
+    });
+    this.lienzo.addEventListener("pointerleave", () => this.avisos.sobre(null));
     this.lienzo.addEventListener("pointerup", e => {
       if (!inicio || Math.hypot(e.offsetX - inicio[0], e.offsetY - inicio[1]) >= 5) return;  // fue un arrastre
       for (const tipo of ["balizas", "robots"]) {
@@ -198,8 +217,18 @@ export class Mapa3D {
   _animar() {
     requestAnimationFrame(() => this._animar());
     this.controles.update();
+    if (this.estado) this._moverNubes(this.estado.ambiente, performance.now() / 1000);
     this.renderer.render(this.escena, this.camara);
     if (this.estado) this._dibujarVivo(this.estado);
+  }
+
+  _moverNubes(ambiente, t) {
+    const visibles = Math.round(this.nubes.length * ambiente.nubes);
+    this.nubes.forEach((plano, i) => {
+      const [x, y] = posicionNube(this.geo.nubes[i], ambiente.viento, t, this.geo.limites);
+      plano.position.copy(a3(x, y, ALTURA_NUBES_M));
+      plano.material.opacity = i < visibles ? ambiente.nubes * 0.6 : 0;
+    });
   }
 
   _dibujarVivo(estado) {
@@ -210,6 +239,7 @@ export class Mapa3D {
       c.beginPath(); r.recorrido.forEach(([x, y], i) => c[i ? "lineTo" : "moveTo"](...this._aPantalla(x, y)));
       c.setLineDash([6, 4]); c.strokeStyle = FRANJA[r.franja]; c.lineWidth = 3; c.stroke(); c.setLineDash([]);
     }
+    dibujarLuces(c, estado.ambiente, this.geo, (x, y, z) => this._aPantalla(x, y, z));
     this.enPantalla = { balizas: [], robots: [] };
     for (const b of estado.balizas) {
       const alto = b.edificio !== null ? this.geo.edificios[b.edificio].altura : 0;
@@ -226,6 +256,7 @@ export class Mapa3D {
       dibujarRobot(c, x, y, r, this.retratos[r.id]);
       this.enPantalla.robots.push([r.id, x, y]);
     }
-    dibujarNubes(c, this.lienzo.clientWidth, this.lienzo.clientHeight, estado.clima, performance.now() / 1000);
+    dibujarEncima(c, this.lienzo.clientWidth, this.lienzo.clientHeight, estado.ambiente, this.geo,
+                  (x, y, z) => this._aPantalla(x, y, z), 1, performance.now() / 1000, false);
   }
 }
