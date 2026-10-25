@@ -46,6 +46,23 @@ def test_lee_el_json_de_ejemplo(monkeypatch):
     assert r.prob_lluvia_pct == 35  # la hora actual es las 09:xx
 
 
+def test_lee_visibilidad_tormenta_humedad_y_direccion(monkeypatch):
+    datos = {**JSON_EJEMPLO, "current": {**JSON_EJEMPLO["current"], "visibility": 2960.0,
+                                         "weather_code": 95, "relative_humidity_2m": 92,
+                                         "wind_direction_10m": 235}}
+    simular(monkeypatch, RespuestaFalsa(datos))
+    r = ServicioClimaOpenMeteo().obtener_reporte(AZOTEA)
+    assert (r.visibilidad_m, r.tormenta, r.humedad_pct, r.direccion_viento_grados) == (2960.0, True, 92, 235)
+    assert r.es_favorable(ServicioClimaOpenMeteo().umbrales) == (False, "tormenta eléctrica")
+
+
+def test_si_faltan_los_datos_nuevos_no_es_un_error(monkeypatch):
+    datos = {**JSON_EJEMPLO, "current": {**JSON_EJEMPLO["current"], "visibility": None, "weather_code": 81}}
+    simular(monkeypatch, RespuestaFalsa(datos))
+    r = ServicioClimaOpenMeteo().obtener_reporte(AZOTEA)
+    assert r.disponible and r.visibilidad_m is None and not r.tormenta and r.humedad_pct is None
+
+
 def test_con_buen_clima_el_dron_puede_volar(monkeypatch):
     simular(monkeypatch, RespuestaFalsa(JSON_EJEMPLO))
     assert ServicioClimaOpenMeteo().condiciones_favorables(AZOTEA)

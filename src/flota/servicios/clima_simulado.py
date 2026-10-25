@@ -12,8 +12,12 @@ class ServicioClimaSimulado(ProveedorClima):
         super().__init__(umbrales)
         self.configurar(viento_kmh, rafagas_kmh, prob_lluvia_pct, es_de_dia)
 
-    def configurar(self, viento: float, rafagas: float, lluvia: float, dia: bool) -> None:
-        self._reporte = ReporteClima(viento, rafagas, lluvia, dia)  # valida los rangos
+    def configurar(self, viento: float, rafagas: float, lluvia: float, dia: bool,
+                   visibilidad: float = 10_000, tormenta: bool = False,
+                   humedad: float = 70, direccion: float = 180) -> None:
+        self._reporte = ReporteClima(viento, rafagas, lluvia, dia, visibilidad_m=visibilidad,
+                                     tormenta=tormenta, humedad_pct=humedad,
+                                     direccion_viento_grados=direccion)  # valida los rangos
 
     def obtener_reporte(self, ubicacion: Ubicacion) -> ReporteClima:
         return self._reporte
