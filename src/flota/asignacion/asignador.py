@@ -1,16 +1,22 @@
 """Asignador: elige el robot compatible más barato y consulta el clima solo si hace falta."""
+from datetime import date
+from typing import Optional
+
 from flota.dominio.bitacora import Bitacora, TipoEvento
 from flota.dominio.flota import Flota
 from flota.dominio.solicitud import EstadoSolicitud, SolicitudEntrega
+from flota.servicios.proveedor_calendario import ProveedorCalendario
 from flota.servicios.proveedor_clima import ProveedorClima
 
 
 class AsignadorEntregas:
 
-    def __init__(self, flota: Flota, proveedor_clima: ProveedorClima, bitacora: Bitacora):
+    def __init__(self, flota: Flota, proveedor_clima: ProveedorClima, bitacora: Bitacora,
+                 calendario: Optional[ProveedorCalendario] = None):
         self._flota = flota
         self._proveedor_clima = proveedor_clima
         self._bitacora = bitacora
+        self._calendario = calendario  # sin calendario no se aplica la regla de festivos
         self._pendientes: list[SolicitudEntrega] = []
         self._en_curso: list[SolicitudEntrega] = []  # asignadas y aún sin entregar
 
@@ -22,6 +28,15 @@ class AsignadorEntregas:
         if not isinstance(proveedor, ProveedorClima):
             raise TypeError("El proveedor debe ser un ProveedorClima")
         self._proveedor_clima = proveedor
+
+    @property
+    def calendario(self) -> Optional[ProveedorCalendario]:
+        return self._calendario
+
+    def cambiar_calendario(self, calendario: Optional[ProveedorCalendario]) -> None:
+        if calendario is not None and not isinstance(calendario, ProveedorCalendario):
+            raise TypeError("El calendario debe ser un ProveedorCalendario")
+        self._calendario = calendario
 
     @property
     def pendientes(self) -> tuple[SolicitudEntrega, ...]:
@@ -67,6 +82,10 @@ class AsignadorEntregas:
         return logradas
 
     def _intentar(self, solicitud: SolicitudEntrega) -> tuple[bool, str]:
+        if solicitud.carga.requiere_cafeteria() and self._calendario is not None:
+            festivo = self._calendario.festivo(date.today())
+            if festivo:
+                return False, f"cafetería cerrada (festivo: {festivo})"
         reporte = None  # se pide una sola vez, y solo si un dron llega a ser el siguiente más barato
         aptos = [(r.calcular_costo(solicitud.origen, solicitud.destino, solicitud.carga), r)
                  for r in self._flota.disponibles() if r.puede_atender(solicitud)]

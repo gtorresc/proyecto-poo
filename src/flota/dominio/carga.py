@@ -28,6 +28,10 @@ class Carga(ABC):
         # Se consultan capacidades del robot, nunca su subclase (decisión D4)
         return True
 
+    def requiere_cafeteria(self) -> bool:
+        """Si sale de la cafetería, que cierra en festivos."""
+        return False
+
     def __repr__(self) -> str:
         return f"{type(self).__name__}({self._descripcion!r}, {self._peso_kg} kg)"
 
@@ -52,6 +56,9 @@ class Alimento(Carga):
 
     def es_compatible_con(self, robot) -> bool:
         return robot.tiene_control_temperatura
+
+    def requiere_cafeteria(self) -> bool:
+        return True
 
 
 class Fragil(Carga):
