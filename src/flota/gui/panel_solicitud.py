@@ -1,31 +1,23 @@
-"""Formulario de nueva solicitud: arma el objeto y se lo entrega al asignador."""
+"""Formulario de nueva solicitud: se la pasa a CentroControl, que la asigna con el asignador."""
 import customtkinter as ctk
-
-from flota.dominio.carga import Alimento, Documento, Fragil, MaterialPeligroso
-from flota.dominio.solicitud import SolicitudEntrega
-
-TIPOS_CARGA = {
-    "Documento": lambda peso: Documento("Documento", peso),
-    "Alimento": lambda peso: Alimento("Alimento", peso, 60),
-    "Frágil": lambda peso: Fragil("Carga frágil", peso),
-    "Material peligroso": lambda peso: MaterialPeligroso("Material peligroso", peso, 2),
-}
 
 
 class PanelSolicitud(ctk.CTkFrame):
 
-    def __init__(self, master, ubicaciones: dict, asignador, al_cambiar):
+    def __init__(self, master, centro, al_cambiar):
         super().__init__(master)
-        self._por_nombre = {u.nombre: u for u in ubicaciones.values()}
-        self._asignador = asignador
+        geo = centro.geometria()
+        self._clave_lugar = {u["nombre"]: u["clave"] for u in geo["ubicaciones"]}
+        self._clave_carga = {t["nombre"]: t["clave"] for t in geo["tipos_carga"]}
+        self._centro = centro
         self._al_cambiar = al_cambiar
-        nombres = list(self._por_nombre)
+        nombres = list(self._clave_lugar)
         ctk.CTkLabel(self, text="NUEVA SOLICITUD", font=ctk.CTkFont(weight="bold")).pack(
             anchor="w", padx=10, pady=(8, 2))
         self._origen = self._lista("Origen", nombres)
         self._destino = self._lista("Destino", nombres)
         self._destino.set(nombres[1])
-        self._carga = self._lista("Carga", list(TIPOS_CARGA))
+        self._carga = self._lista("Carga", list(self._clave_carga))
         ctk.CTkLabel(self, text="Peso (kg)", font=ctk.CTkFont(size=11)).pack(anchor="w", padx=10)
         self._peso = ctk.CTkEntry(self)
         self._peso.insert(0, "1.5")
@@ -42,17 +34,20 @@ class PanelSolicitud(ctk.CTkFrame):
 
     def _asignar(self) -> None:
         try:
-            carga = TIPOS_CARGA[self._carga.get()](float(self._peso.get().replace(",", ".")))
-            solicitud = SolicitudEntrega(self._por_nombre[self._origen.get()],
-                                         self._por_nombre[self._destino.get()], carga)
+            id_sol = self._centro.crear_solicitud(
+                self._clave_lugar[self._origen.get()], self._clave_lugar[self._destino.get()],
+                self._clave_carga[self._carga.get()], float(self._peso.get().replace(",", ".")))
         except ValueError as error:  # peso no numérico, <= 0 u origen igual al destino
             self._mostrar(f"Datos inválidos: {error}", "#c0392b")
             return
-        if self._asignador.asignar(solicitud):
-            self._mostrar(f"{solicitud.robot.id} · ${solicitud.costo:,.0f} · {solicitud.tiempo_min:.1f} min",
-                          "#2e8b57")
+        ok, motivo = self._centro.despachar_auto(id_sol)
+        if ok:
+            robot = next(r for r in self._centro.estado()["robots"]
+                         if r["mision"] and r["mision"]["solicitud"] == id_sol)
+            m = robot["mision"]
+            self._mostrar(f"{robot['id']} · ${m['costo']:,.0f} · {m['tiempo_min']:.1f} min", "#2e8b57")
         else:
-            self._mostrar(f"Pendiente: {solicitud.motivo}", "#e6b800")
+            self._mostrar(f"Pendiente: {motivo}", "#e6b800")
         self._al_cambiar()
 
     def _mostrar(self, texto: str, color: str) -> None:
