@@ -3,6 +3,31 @@
 Archivos:
 - `diagrama_clases_v1.drawio` / `.png`: primera versión, derivada de las tablas CRC (Fase 2)
 - `diagrama_clases_v2.drawio` / `.png`: ajustada al código de la Fase 5 (fuente editable en draw.io / diagrams.net)
+- `diagrama_clases_v3.drawio` / `.png`: mejoras de la rama `udem-despacho` (rutas por senderos, festivos, despacho manual)
+
+---
+
+## v3 (2026-10-25): mejoras de la rama `udem-despacho`
+
+Entran cinco clases nuevas y dos relaciones nuevas; las de v2 se mantienen. El detalle de cada cambio está
+en la sección 7 de [CAMBIOS_DISENO.md](../CAMBIOS_DISENO.md). La interfaz gráfica (`CentroControl`, los
+paneles, `PuenteWeb`) es capa de presentación y queda fuera del diagrama, igual que en v1 y v2.
+
+| Clase o relación | Cambio en el diagrama |
+|---|---|
+| `Ruta` (nueva) | puntos y distancia de un recorrido; `linea_recta()` como constructor alternativo |
+| `RedSenderos` (nueva) | grafo de los senderos de OSM; `ruta()` con Dijkstra; `RedSenderos ..> Ruta` «crea» |
+| `Robot — RedSenderos` (nueva, 0..* — 0..1) | asociación opcional: toda la flota comparte una red |
+| `Robot` | `+ _red`, `+ trazar_ruta()`, `+ motivo_rechazo()` |
+| `Dron` | `trazar_ruta()` (vuela recto) reemplaza a `factor_ruta()` |
+| `ProveedorCalendario` (nueva, abstracta), `CalendarioNagerDate`, `CalendarioSimulado` (nuevas) | festivos de Colombia, mismo patrón que el clima |
+| `AsignadorEntregas — ProveedorCalendario` (nueva, 1 — 0..1, «inyectado») | `+ _calendario`, `+ calendario`, `+ cambiar_calendario()` |
+| `AsignadorEntregas` | `+ despachar()` (despacho manual), `- _motivo_festivo()`, `- _asignar_a()` |
+| `Carga`, `Alimento` | `+ requiere_cafeteria()` |
+| `ReporteClima` | `+ _visibilidad_m`, `+ _tormenta`, `+ _humedad_pct`, `+ _direccion_viento_grados` |
+| `UmbralesClima` | `+ _visibilidad_min_m` |
+| `ServicioClimaSimulado` | `configurar()` recibe visibilidad, tormenta, humedad y dirección |
+| `TipoEvento` | `+ DESPACHO_RECHAZADO` |
 
 ---
 

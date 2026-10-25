@@ -58,6 +58,10 @@ Las clases, las relaciones y los patrones de las Fases 3 y 4 (herencia de `Robot
 
 Después de entregar la Fase 5 se abrió la rama `udem-despacho` para mejorar el programa sin arriesgar la versión entregada (`main`). Cada cambio se anota aquí en el mismo commit que lo introduce.
 
+El resultado está en [diagrama_clases_v3.png](fase3-uml/diagrama_clases_v3.png) ([fuente draw.io](fase3-uml/diagrama_clases_v3.drawio)) y en el [changelog del UML](fase3-uml/CHANGELOG_UML.md). La versión entregada quedó marcada con el tag `v1-entrega`.
+
+En resumen, el dominio ganó cinco clases (`Ruta`, `RedSenderos`, `ProveedorCalendario`, `CalendarioNagerDate`, `CalendarioSimulado`) y dos relaciones (`Robot — RedSenderos` y `AsignadorEntregas — ProveedorCalendario`). Ninguna relación de v2 cambió de tipo, y las dos interfaces nuevas (CustomTkinter y web) están fuera del dominio, sobre `CentroControl`.
+
 | Qué cambió | Por qué | Qué aprendimos |
 | --- | --- | --- |
 | Nuevo archivo de datos `src/flota/campus_osm.json` (perímetro, 95 edificios con contorno y pisos, 300 caminos) y `cargar_geometria()` en `campus.py`. Lo genera una sola vez `scripts/descargar_campus_osm.py` desde la API Overpass de OpenStreetMap. | El mapa en 2D y 3D y las rutas por senderos necesitan la forma real del campus. Se descarga una vez y queda en el repositorio: el programa no depende de Overpass al ejecutarse y funciona sin internet. No es una clase del dominio, como `campus.json`. | Los datos abiertos tienen huecos. OSM no tiene los bloques 3, 4 y 12, justo tres puntos de entrega. Se trazaron a mano sobre imagen satelital, marcados como `trazado_a_mano`, y un test comprueba que cada punto de entrega cae sobre un edificio. Solo 12 de los 95 edificios traen número de pisos. |
