@@ -12,6 +12,7 @@ class AsignadorEntregas:
         self._proveedor_clima = proveedor_clima
         self._bitacora = bitacora
         self._pendientes: list[SolicitudEntrega] = []
+        self._en_curso: list[SolicitudEntrega] = []  # asignadas y aún sin entregar
 
     @property
     def proveedor_clima(self) -> ProveedorClima:
@@ -25,6 +26,10 @@ class AsignadorEntregas:
     @property
     def pendientes(self) -> tuple[SolicitudEntrega, ...]:
         return tuple(self._pendientes)
+
+    @property
+    def en_curso(self) -> tuple[SolicitudEntrega, ...]:
+        return tuple(self._en_curso)
 
     def asignar(self, solicitud: SolicitudEntrega) -> bool:
         """True si un robot quedó asignado; si no, la solicitud queda pendiente y se reintentará."""
@@ -42,6 +47,7 @@ class AsignadorEntregas:
             raise ValueError(f"Solicitud {solicitud.id} no está asignada")
         robot.entregar(solicitud.destino)
         solicitud.marcar_entregada()
+        self._en_curso.remove(solicitud)
         self._bitacora.registrar(TipoEvento.ENTREGA_EXITOSA,
                                  f"Solicitud {solicitud.id} entregada en {solicitud.destino.nombre}",
                                  robot.id)
@@ -85,4 +91,5 @@ class AsignadorEntregas:
                   + robot.calcular_tiempo_min(solicitud.origen, solicitud.destino))
         robot.cargar(solicitud.carga, solicitud.origen)
         solicitud.asignar(robot, costo, tiempo)
+        self._en_curso.append(solicitud)
         return True, ""

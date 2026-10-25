@@ -141,3 +141,24 @@ def test_no_se_completa_lo_que_no_esta_asignado(entorno):
     _, _, _, asignador = entorno
     with pytest.raises(ValueError):
         asignador.completar_entrega(SolicitudEntrega(CAFETERIA, BIBLIOTECA, Documento("Tesis", 1)))
+
+
+def test_en_curso_lleva_las_asignadas_hasta_que_se_entregan(entorno):
+    _, _, _, asignador = entorno
+    s = SolicitudEntrega(CAFETERIA, BIBLIOTECA, Documento("Tesis", 1))
+    assert asignador.en_curso == ()
+    asignador.asignar(s)
+    assert asignador.en_curso == (s,)
+    asignador.completar_entrega(s)
+    assert asignador.en_curso == ()
+
+
+def test_una_pendiente_reasignada_entra_en_curso(entorno):
+    _, _, clima, asignador = entorno
+    clima.configurar(viento=45, rafagas=50, lluvia=10, dia=True)
+    s = SolicitudEntrega(CAFETERIA, AZOTEA, Documento("Tesis", 1))
+    asignador.asignar(s)
+    assert asignador.en_curso == ()
+    clima.configurar(viento=10, rafagas=15, lluvia=10, dia=True)
+    asignador.reintentar_pendientes()
+    assert asignador.en_curso == (s,)

@@ -40,7 +40,7 @@ class App(ctk.CTk):
         self.panel_bitacora = PanelBitacora(self, bitacora)
         self.panel_bitacora.grid(row=2, column=0, columnspan=3, sticky="ew", padx=10, pady=(5, 10))
 
-        self.panel_mapa = PanelMapa(self, ubicaciones, flota)
+        self.panel_mapa = PanelMapa(self, ubicaciones, flota, asignador, self.actualizar)
         self.panel_mapa.grid(row=1, column=1, sticky="nsew", pady=5)
         self._ciclo()
 
@@ -49,7 +49,6 @@ class App(ctk.CTk):
         self.panel_flota.refrescar()
         self.panel_clima.refrescar()
         self.panel_bitacora.refrescar()
-        self.panel_mapa.refrescar()
 
     def _clima_cambio(self) -> None:
         self.asignador.reintentar_pendientes()  # un clima mejor puede liberar solicitudes pendientes

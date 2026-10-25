@@ -1,4 +1,5 @@
 """Mapa del campus: solo dibuja lo que dice el dominio, no decide nada."""
+import time
 from types import SimpleNamespace
 
 import customtkinter as ctk
@@ -38,6 +39,9 @@ def _get_para_tiles(url, **kwargs):
 # solo dentro del módulo de tkintermapview; el requests global no cambia
 map_widget.requests = SimpleNamespace(get=_get_para_tiles, exceptions=requests.exceptions)
 
+INTERVALO_MS = 50
+SEGUNDOS_POR_MINUTO = 6  # 1 min de viaje simulado = 6 s en pantalla
+MIN_VIAJE_S = 3          # los tramos de 0,2 km durarían menos de un parpadeo
 CENTRO_CAMPUS = (6.2316146, -75.6111419)  # Plaza de Prometeo
 COLOR_ZONA = {Zona.EDIFICIO: "#1f6aa5", Zona.AZOTEA: "#8e44ad", Zona.ZONA_VERDE: "#2e8b57"}
 
@@ -49,12 +53,13 @@ def color_robot(robot) -> str:
 
 
 class PanelMapa(ctk.CTkFrame):
+    """Dibuja los robots y los mueve de origen a destino; al llegar, completa la entrega."""
 
-    def __init__(self, master, ubicaciones: dict, flota):
+    def __init__(self, master, ubicaciones: dict, flota, asignador, al_completar, reloj=time.monotonic):
         super().__init__(master)
-        self._flota = flota
-        self._marcadores_robots = []
-        self._posiciones = None
+        self._flota, self._asignador, self._al_completar, self._reloj = flota, asignador, al_completar, reloj
+        self._marcadores = {}   # id del robot -> marcador
+        self._viajes = {}       # id de la solicitud -> (inicio, duración en s, línea de ruta)
         self.mapa = tkintermapview.TkinterMapView(self, corner_radius=0)  # tiles de OpenStreetMap
         self.mapa.pack(fill="both", expand=True)
         self.mapa.set_position(*CENTRO_CAMPUS)
@@ -63,19 +68,52 @@ class PanelMapa(ctk.CTkFrame):
             self.mapa.set_marker(u.latitud, u.longitud, text=u.nombre,
                                  marker_color_circle=COLOR_ZONA[u.zona],
                                  marker_color_outside=COLOR_ZONA[u.zona], font=("Segoe UI", 9))
+        self._ciclo()
+
+    def _ciclo(self) -> None:
         self.refrescar()
+        self.after(INTERVALO_MS, self._ciclo)
 
     def refrescar(self) -> None:
-        """Vuelve a dibujar los robots en su ubicación actual."""
-        posiciones = [(r.id, r.ubicacion) for r in self._flota.robots]
-        if posiciones == self._posiciones:
-            return  # nada se movió: evita redibujar cada segundo
-        self._posiciones = posiciones
-        for marcador in self._marcadores_robots:
-            marcador.delete()
-        self._marcadores_robots = [
-            self.mapa.set_marker(r.ubicacion.latitud, r.ubicacion.longitud, text=r.id,
-                                 marker_color_circle=color_robot(r), marker_color_outside="#222222",
-                                 text_color=color_robot(r), font=("Segoe UI", 10, "bold"))
-            for r in self._flota.robots
-        ]
+        ahora = self._reloj()
+        for solicitud in self._asignador.en_curso:
+            if solicitud.id not in self._viajes:
+                self._iniciar_viaje(solicitud, ahora)
+        llegadas = [s for s in self._asignador.en_curso if self._progreso(s, ahora) >= 1]
+        for solicitud in llegadas:
+            self._viajes.pop(solicitud.id)[2].delete()
+            self._asignador.completar_entrega(solicitud)  # el robot pasa a estar en el destino
+        if llegadas:
+            self._al_completar()
+        self._dibujar_robots(ahora)
+
+    def _iniciar_viaje(self, solicitud, ahora: float) -> None:
+        o, d, robot = solicitud.origen, solicitud.destino, solicitud.robot
+        # la duración sale del propio robot: un dron llega antes que unas orugas
+        duracion = max(MIN_VIAJE_S, robot.calcular_tiempo_min(o, d) * SEGUNDOS_POR_MINUTO)
+        ruta = self.mapa.set_path([(o.latitud, o.longitud), (d.latitud, d.longitud)],
+                                  color=color_robot(robot), width=3)
+        self._viajes[solicitud.id] = (ahora, duracion, ruta)
+
+    def _progreso(self, solicitud, ahora: float) -> float:
+        inicio, duracion, _ = self._viajes[solicitud.id]
+        return (ahora - inicio) / duracion
+
+    def _dibujar_robots(self, ahora: float) -> None:
+        en_viaje = {s.robot.id: s for s in self._asignador.en_curso}
+        for robot in self._flota.robots:
+            solicitud = en_viaje.get(robot.id)
+            if solicitud is None:
+                lat, lon = robot.ubicacion.latitud, robot.ubicacion.longitud
+            else:  # interpolación lineal entre origen y destino
+                t = min(1.0, self._progreso(solicitud, ahora))
+                o, d = solicitud.origen, solicitud.destino
+                lat, lon = o.latitud + (d.latitud - o.latitud) * t, o.longitud + (d.longitud - o.longitud) * t
+            marcador = self._marcadores.get(robot.id)
+            if marcador is None:
+                self._marcadores[robot.id] = self.mapa.set_marker(
+                    lat, lon, text=robot.id, marker_color_circle=color_robot(robot),
+                    marker_color_outside="#222222", text_color=color_robot(robot),
+                    font=("Segoe UI", 10, "bold"))
+            elif marcador.position != (lat, lon):
+                marcador.set_position(lat, lon)
