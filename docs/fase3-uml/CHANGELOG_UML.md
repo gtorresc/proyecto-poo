@@ -1,8 +1,26 @@
 # Changelog del diagrama de clases
 
 Archivos:
-- `diagrama_clases_v1.drawio`: fuente editable (draw.io / diagrams.net)
-- `diagrama_clases_v1.png`: exportación
+- `diagrama_clases_v1.drawio` / `.png`: primera versión, derivada de las tablas CRC (Fase 2)
+- `diagrama_clases_v2.drawio` / `.png`: ajustada al código de la Fase 5 (fuente editable en draw.io / diagrams.net)
+
+---
+
+## v2 (2026-10-25): ajustes tras implementar el sistema (Fase 5)
+
+Las clases y las relaciones no cambian. Solo se ajustan miembros, porque al escribir el código aparecieron
+cosas que el papel no mostraba. El detalle de cada cambio (qué, por qué y qué se aprendió) está en
+[CAMBIOS_DISENO.md](../CAMBIOS_DISENO.md).
+
+| Clase | Cambio en el diagrama |
+|---|---|
+| `Robot` | `+ necesita_mantenimiento()`, `+ terminar_mantenimiento()`; `cargar()` recibe `origen` opcional |
+| `Bateria` | `+ reserva_minima` (propiedad) |
+| `Flota` | `+ robots` (propiedad, devuelve una copia) |
+| `AsignadorEntregas` | `+ _en_curso`, `+ pendientes`, `+ en_curso`, `+ proveedor_clima`, `- _intentar()` |
+| `ProveedorClima` | `+ umbrales` (propiedad) |
+| `ReporteClima` | `+ _temperatura_c`, `+ no_disponible()` (constructor alternativo) |
+| `ServicioClimaOpenMeteo` | se quita `_url_base` (es una constante del módulo) |
 
 ---
 
