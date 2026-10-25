@@ -18,7 +18,9 @@ src/flota/
   asignacion/    reglas de asignación de entregas
   gui/           interfaz gráfica (CustomTkinter + mapa OpenStreetMap)
   campus.json    puntos reales del campus UdeM y flota inicial (datos, no clases)
-  campus.py      carga campus.json y arma la flota
+  campus_osm.json  edificios y caminos del campus tomados de OpenStreetMap (datos de dibujo y rutas)
+  campus.py      carga campus.json, arma la flota y lee campus_osm.json
+scripts/         descargar_campus_osm.py: regenera campus_osm.json desde Overpass (solo hace falta una vez)
 tests/           pruebas con pytest
 docs/            entregables por fase (análisis, CRC, UML, justificación, cambios de diseño)
 ```

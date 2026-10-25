@@ -53,3 +53,12 @@ Las clases, las relaciones y los patrones de las Fases 3 y 4 (herencia de `Robot
 
 - **El mapa tardaba ~20 s por cada tile.** En una red con IPv6 bloqueado, `requests` espera a que fallen las 4 direcciones IPv6 antes de probar IPv4, y `tkintermapview` no pone timeout. Se arregló en `gui/panel_mapa.py` con una sesión que fuerza IPv4 y tiene timeout de 10 s. Aprendizaje: una dependencia externa puede fallar por la red de quien la usa, no por el código; por eso el clima real también tiene timeout y respuesta "no disponible".
 - **OpenStreetMap exige identificar la aplicación.** `tkintermapview` manda un `User-Agent` fijo que OSM puede bloquear; el mapa envía `FlotaRobotsUdeM/1.0` (política de uso de tiles de OSM).
+
+## 7. Versión 3: mejoras de la rama `udem-despacho`
+
+Después de entregar la Fase 5 se abrió la rama `udem-despacho` para mejorar el programa sin arriesgar la versión entregada (`main`). Cada cambio se anota aquí en el mismo commit que lo introduce.
+
+| Qué cambió | Por qué | Qué aprendimos |
+| --- | --- | --- |
+| Nuevo archivo de datos `src/flota/campus_osm.json` (perímetro, 95 edificios con contorno y pisos, 300 caminos) y `cargar_geometria()` en `campus.py`. Lo genera una sola vez `scripts/descargar_campus_osm.py` desde la API Overpass de OpenStreetMap. | El mapa en 2D y 3D y las rutas por senderos necesitan la forma real del campus. Se descarga una vez y queda en el repositorio: el programa no depende de Overpass al ejecutarse y funciona sin internet. No es una clase del dominio, como `campus.json`. | Los datos abiertos tienen huecos. OSM no tiene los bloques 3, 4 y 12, justo tres puntos de entrega. Se trazaron a mano sobre imagen satelital, marcados como `trazado_a_mano`, y un test comprueba que cada punto de entrega cae sobre un edificio. Solo 12 de los 95 edificios traen número de pisos. |
+
