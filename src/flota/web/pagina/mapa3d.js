@@ -3,7 +3,7 @@
 // balizas se dibujan encima en un canvas 2D, con las mismas funciones que el mapa de respaldo.
 import * as THREE from "three";
 import { OrbitControls } from "./vendor/OrbitControls.js";
-import { PALETA, RESALTADO, FRANJA, dibujarBaliza, dibujarRobot } from "./mapa2d.js";
+import { PALETA, RESALTADO, FRANJA, dibujarBaliza, dibujarNubes, dibujarRobot } from "./mapa2d.js";
 
 const CALLES = new Set(["residential", "tertiary", "unclassified", "living_street"]);
 const POLAR_3D = 0.95, POLAR_2D = 0.0001;  // ángulo desde la vertical
@@ -226,5 +226,6 @@ export class Mapa3D {
       dibujarRobot(c, x, y, r, this.retratos[r.id]);
       this.enPantalla.robots.push([r.id, x, y]);
     }
+    dibujarNubes(c, this.lienzo.clientWidth, this.lienzo.clientHeight, estado.clima, performance.now() / 1000);
   }
 }

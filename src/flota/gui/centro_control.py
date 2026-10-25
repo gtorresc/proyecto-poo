@@ -28,6 +28,7 @@ SEGUNDOS_POR_MINUTO = 6  # 1 min de viaje simulado = 6 s en pantalla
 MIN_VIAJE_S = 3  # los tramos cortos durarían menos de un parpadeo
 RECARGA_S = 10  # tiempo en pantalla que un robot pasa en mantenimiento
 ALTURA_VUELO_M = 30
+SEPARACION_M = 16  # robots quietos en el mismo lugar se dibujan en ronda, para que no se tapen
 EVENTOS_VISIBLES = 50
 
 TIPOS_CARGA = {  # clave -> (nombre en pantalla, fábrica a partir del peso)
@@ -257,12 +258,20 @@ class CentroControl:
     def _robots(self, ahora: float) -> list[dict]:
         en_curso = {s.robot.id: s for s in self._asignador.en_curso}
         radar = self._radar()
+        quietos: dict[int, list[str]] = {}  # ubicación -> ids de los robots quietos ahí
+        for robot in self._flota.robots:
+            if robot.id not in en_curso:
+                quietos.setdefault(id(robot.ubicacion), []).append(robot.id)
         robots = []
         for robot in self._flota.robots:
             solicitud = en_curso.get(robot.id)
             viaje = self._viajes.get(solicitud.id) if solicitud else None
             if viaje is None:  # quieto, o asignado pero el viaje empieza en el próximo tick
                 x, y = a_metros(robot.ubicacion.latitud, robot.ubicacion.longitud)
+                vecinos = quietos.get(id(robot.ubicacion), [robot.id])
+                if len(vecinos) > 1:
+                    angulo = 2 * math.pi * vecinos.index(robot.id) / len(vecinos)
+                    x, y = x + SEPARACION_M * math.cos(angulo), y + SEPARACION_M * math.sin(angulo)
                 z, recorrido, t = 0, [], 0.0
             else:
                 t = min(1.0, self._progreso(solicitud.id, ahora))

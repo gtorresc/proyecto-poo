@@ -171,3 +171,9 @@ def test_la_bitacora_llega_como_texto(centro):
     assert eventos["ultimos"][-1]["tipo"] == "SOLICITUD_PENDIENTE"
     assert "REPORTE" in centro.exportar_bitacora()
     assert next(s for s in centro._asignador.en_curso).estado is EstadoSolicitud.ASIGNADA
+
+
+def test_los_robots_quietos_en_el_mismo_lugar_no_se_tapan(centro):
+    posiciones = {(round(r["x"], 1), round(r["y"], 1)) for r in centro.estado()["robots"]}
+    assert len(posiciones) == 4  # los cuatro empiezan en la estación
+

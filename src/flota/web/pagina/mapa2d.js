@@ -125,6 +125,7 @@ export class Mapa2D {
       dibujarRobot(c, x, y, r, this.retratos[r.id]);
       this.enPantalla.robots.push([r.id, x, y]);
     }
+    dibujarNubes(c, this.ancho, this.alto, estado.clima, performance.now() / 1000);
   }
 }
 
@@ -143,4 +144,24 @@ export function dibujarRobot(c, x, y, r, imagen) {
     c.save(); c.beginPath(); c.arc(x, y, 12, 0, 2 * Math.PI); c.clip(); c.drawImage(imagen, x - 12, y - 12, 24, 24); c.restore();
   }
   c.fillStyle = "#f3efe4"; c.font = "12px Oswald-SemiBold"; c.textAlign = "center"; c.textBaseline = "top"; c.fillText(r.id, x, y + 18);
+}
+
+// Sombras de nubes que cruzan el mapa con el viento; más densas cuanto más llueve
+const NUBES = Array.from({ length: 7 }, (_, i) => ({ x: (i * 0.37) % 1, y: (i * 0.61) % 1, r: 0.12 + (i % 3) * 0.05 }));
+
+export function dibujarNubes(c, ancho, alto, clima, segundos) {
+  if (!clima || clima.consultando || !clima.disponible || (clima.lluvia < 40 && !clima.tormenta)) return;
+  const densidad = Math.min(1, (clima.tormenta ? 100 : clima.lluvia) / 100);
+  const rumbo = ((clima.direccion ?? 270) + 180) * Math.PI / 180;  // el viento viene de "direccion": las nubes van al otro lado
+  const avance = segundos * (2 + clima.viento / 4) / 1000;
+  NUBES.slice(0, Math.ceil(densidad * NUBES.length)).forEach(n => {
+    const x = (((n.x + Math.sin(rumbo) * avance) % 1) + 1) % 1 * (ancho + 400) - 200;
+    const y = (((n.y - Math.cos(rumbo) * avance) % 1) + 1) % 1 * (alto + 400) - 200;
+    const radio = n.r * Math.max(ancho, alto);
+    const g = c.createRadialGradient(x, y, 0, x, y, radio);
+    g.addColorStop(0, `rgba(10, 30, 32, ${0.35 * densidad})`);
+    g.addColorStop(1, "rgba(10, 30, 32, 0)");
+    c.fillStyle = g;
+    c.fillRect(x - radio, y - radio, 2 * radio, 2 * radio);
+  });
 }
