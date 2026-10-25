@@ -2,12 +2,12 @@
 // Es el respaldo de la vista 3D: solo usa Canvas 2D, que funciona en cualquier navegador.
 
 export const PALETA = {
-  dia: { fondo: "#1d7f7b", campus: "#23918b", edificio: "#2bb3a3", arista: "#b9fff2", sendero: "#5fd3c3",
-         calle: "#176a66", ciudad: "#227f78", aristaCiudad: "#6fd6c8" },
-  noche: { fondo: "#0c1a1c", campus: "#0f2225", edificio: "#10302c", arista: "#46f0b4", sendero: "#1f5a4c",
-           calle: "#14302e", ciudad: "#0f2624", aristaCiudad: "#1f6a58" },
+  dia: { fondo: "#1d7f7b", campus: "#23918b", edificio: "#2bb3a3", pared: "#1f8f84", arista: "#b9fff2",
+         sendero: "#5fd3c3", calle: "#176a66", ciudad: "#227f78", paredCiudad: "#1b6f69", aristaCiudad: "#6fd6c8" },
+  noche: { fondo: "#0c1a1c", campus: "#0f2225", edificio: "#10302c", pared: "#0b2420", arista: "#46f0b4",
+           sendero: "#1f5a4c", calle: "#14302e", ciudad: "#0f2624", paredCiudad: "#0b1d1c", aristaCiudad: "#1f6a58" },
 };
-export const RESALTADO = { edificio: "#f08a2c", arista: "#ffd2a1" };
+export const RESALTADO = { edificio: "#f08a2c", pared: "#c46a1c", arista: "#ffd2a1" };
 export const FRANJA = { libre: "#3f9a6b", ocupado: "#1f6fd1", falla: "#d2453b" };
 const CALLES = new Set(["residential", "tertiary", "unclassified", "living_street"]);
 const ZOOM_MIN = 1, ZOOM_MAX = 4, RADIO_CLIC = 18, ESPERA_ANILLO_S = 90;

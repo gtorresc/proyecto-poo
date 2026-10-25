@@ -58,3 +58,14 @@ def test_la_pagina_y_sus_archivos_existen():
     for archivo in ("estilos.css", "app.js"):
         assert archivo in html and (PAGINA.parent / archivo).exists()
     assert (PAGINA.parent / "mapa2d.js").exists()
+
+
+def test_three_js_va_dentro_del_proyecto_y_no_depende_de_internet():
+    html = PAGINA.read_text(encoding="utf-8")
+    vendor = PAGINA.parent / "vendor"
+    assert '"three": "./vendor/three.module.min.js"' in html  # import map local, sin CDN
+    for archivo in ("three.module.min.js", "OrbitControls.js", "LICENSE-three.txt"):
+        assert (vendor / archivo).exists()
+    mapa3d = (PAGINA.parent / "mapa3d.js").read_text(encoding="utf-8")
+    assert "http" not in mapa3d.split("\n", 1)[1]  # ningún recurso remoto
+    assert 'import("./mapa3d.js")' in (PAGINA.parent / "app.js").read_text(encoding="utf-8")  # con respaldo 2D

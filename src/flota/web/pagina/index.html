@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>UdeM·DESPACHO</title>
   <link rel="stylesheet" href="estilos.css">
+  <script type="importmap">{ "imports": { "three": "./vendor/three.module.min.js" } }</script>
 </head>
 <body>
   <main class="monitor">
@@ -34,6 +35,8 @@
         <div class="fila derecha"><button class="secundario" data-cerrar="robot"><kbd>ESC</kbd> CERRAR</button></div>
       </div>
       <div class="controles-mapa" id="controles-mapa">
+        <button id="boton-modo" data-3d><kbd>TAB</kbd> 2D/3D</button>
+        <button id="boton-girar" data-3d><kbd>R</kbd> GIRAR</button>
         <button id="boton-mas">+</button>
         <button id="boton-menos">−</button>
       </div>

@@ -23,9 +23,21 @@ async function iniciar() {
   }
   const geo = await api.geometria();
   llenarFormulario(geo);
-  mapa = new Mapa2D($("lienzo"), geo, { baliza: abrirLlamada, robot: elegirRobot });
+  mapa = await crearMapa(geo);
   conectarControles();
   ciclo();
+}
+
+async function crearMapa(geo) {
+  const avisos = { baliza: abrirLlamada, robot: elegirRobot };
+  try {
+    const { Mapa3D } = await import("./mapa3d.js");
+    return new Mapa3D($("lienzo"), geo, avisos);
+  } catch (error) {  // sin WebGL (o si three.js no carga) queda el mapa 2D, que funciona en cualquier navegador
+    console.warn("Vista 3D no disponible, se usa el mapa 2D:", error);
+    document.querySelectorAll("[data-3d]").forEach(b => b.hidden = true);
+    return new Mapa2D($("lienzo"), geo, avisos);
+  }
 }
 
 async function ciclo() {
@@ -210,6 +222,8 @@ function conectarControles() {
   $("boton-auto").addEventListener("click", () => vista.llamada !== null && despacharCon(api.despachar_auto(vista.llamada)));
   document.querySelector("[data-cerrar=llamada]").addEventListener("click", cerrarLlamada);
   document.querySelector("[data-cerrar=robot]").addEventListener("click", () => elegirRobot(vista.robotElegido));
+  $("boton-modo").addEventListener("click", () => mapa.alternar());
+  $("boton-girar").addEventListener("click", () => mapa.girar());
   $("boton-mas").addEventListener("click", () => mapa.acercar(1.4));
   $("boton-menos").addEventListener("click", () => mapa.acercar(1 / 1.4));
   $("boton-exportar").addEventListener("click", () => api.exportar_bitacora());
@@ -225,6 +239,8 @@ function conectarControles() {
     if (e.target.matches("input, select")) return;  // escribir en el formulario no dispara atajos
     if (e.key === "Escape") { cerrarLlamada(); if (vista.robotElegido) elegirRobot(vista.robotElegido); }
     if (e.key.toLowerCase() === "a" && vista.llamada !== null) despacharCon(api.despachar_auto(vista.llamada));
+    if (e.key === "Tab" && mapa.alternar) { e.preventDefault(); mapa.alternar(); }
+    if (e.key.toLowerCase() === "r" && mapa.girar) mapa.girar();
   });
 }
 
