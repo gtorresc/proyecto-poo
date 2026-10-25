@@ -4,21 +4,39 @@ from types import SimpleNamespace
 import customtkinter as ctk
 import requests
 import tkintermapview
+from requests.adapters import HTTPAdapter
 from tkintermapview import map_widget
 
 from flota.dominio.robot import Dron, RobotOrugas
 from flota.dominio.ubicacion import Zona
 
 USER_AGENT = "FlotaRobotsUdeM/1.0 (proyecto academico de POO)"
+TIMEOUT_TILE_S = 10
 
 
-def _get_con_user_agent(url, **kwargs):
-    # OSM bloquea el User-Agent fijo de tkintermapview; su política pide uno que identifique la app
+class _AdaptadorIPv4(HTTPAdapter):
+    """Fuerza IPv4: con IPv6 bloqueado, requests espera ~20 s por tile antes de probar IPv4."""
+
+    def init_poolmanager(self, *args, **kwargs):
+        kwargs["source_address"] = ("0.0.0.0", 0)
+        super().init_poolmanager(*args, **kwargs)
+
+
+_sesion = requests.Session()
+_sesion.mount("https://", _AdaptadorIPv4(pool_maxsize=32))  # tkintermapview baja tiles con ~25 hilos
+_sesion.mount("http://", _AdaptadorIPv4(pool_maxsize=32))
+
+
+def _get_para_tiles(url, **kwargs):
+    # OSM bloquea el User-Agent fijo de tkintermapview (su política pide uno que identifique la app)
+    # y la librería no pone timeout: sin él un tile colgado deja un hilo esperando para siempre
     kwargs["headers"] = {"User-Agent": USER_AGENT}
-    return requests.get(url, **kwargs)
+    kwargs.setdefault("timeout", TIMEOUT_TILE_S)
+    return _sesion.get(url, **kwargs)
 
 
-map_widget.requests = SimpleNamespace(get=_get_con_user_agent, exceptions=requests.exceptions)  # solo dentro de ese módulo
+# solo dentro del módulo de tkintermapview; el requests global no cambia
+map_widget.requests = SimpleNamespace(get=_get_para_tiles, exceptions=requests.exceptions)
 
 CENTRO_CAMPUS = (6.2316146, -75.6111419)  # Plaza de Prometeo
 COLOR_ZONA = {Zona.EDIFICIO: "#1f6aa5", Zona.AZOTEA: "#8e44ad", Zona.ZONA_VERDE: "#2e8b57"}
