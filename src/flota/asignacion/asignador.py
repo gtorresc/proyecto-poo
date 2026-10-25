@@ -13,6 +13,10 @@ class AsignadorEntregas:
         self._bitacora = bitacora
         self._pendientes: list[SolicitudEntrega] = []
 
+    @property
+    def proveedor_clima(self) -> ProveedorClima:
+        return self._proveedor_clima
+
     def cambiar_proveedor_clima(self, proveedor: ProveedorClima) -> None:
         if not isinstance(proveedor, ProveedorClima):
             raise TypeError("El proveedor debe ser un ProveedorClima")
