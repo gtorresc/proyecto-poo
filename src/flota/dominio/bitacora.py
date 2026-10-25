@@ -10,6 +10,7 @@ class TipoEvento(Enum):
     RECHAZO_CLIMA = "rechazo por clima"
     SOLICITUD_PENDIENTE = "solicitud pendiente"
     MANTENIMIENTO = "mantenimiento"
+    DESPACHO_RECHAZADO = "despacho rechazado"
 
 
 class EventoBitacora:

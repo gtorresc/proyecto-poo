@@ -80,17 +80,27 @@ class Robot(ABC):
         return self._distancia_ruta_km(self._ubicacion, hasta) * self.consumo_por_km()
 
     def puede_atender(self, solicitud) -> bool:
-        """Estado, peso, zonas, tipo de carga y batería (ida al origen + entrega con reserva)."""
+        return self.motivo_rechazo(solicitud) is None
+
+    def motivo_rechazo(self, solicitud) -> Optional[str]:
+        """La primera regla que impide atender: estado, peso, zonas, tipo de carga y batería
+        (ida al origen + entrega con reserva). None si puede atenderla."""
         carga = solicitud.carga
         zonas = self.zonas_accesibles()
+        if self._estado is not EstadoRobot.DISPONIBLE:
+            return f"{self._id} no está disponible ({self._estado.value})"
+        if carga.peso_kg > self._carga_maxima_kg:
+            return f"sobrepeso: {carga.peso_kg:g} kg > {self._carga_maxima_kg:g} kg"
+        for lugar in (solicitud.origen, solicitud.destino):
+            if lugar.zona not in zonas:
+                return f"{self._id} no llega a {lugar.nombre} ({lugar.zona.value})"
+        if not carga.es_compatible_con(self):
+            return f"carga incompatible: {type(carga).__name__} en {self._id}"
         consumo = (self._consumo_viaje(solicitud.origen)
                    + self._distancia_ruta_km(solicitud.origen, solicitud.destino) * self.consumo_por_km())
-        return (self._estado is EstadoRobot.DISPONIBLE
-                and carga.peso_kg <= self._carga_maxima_kg
-                and solicitud.origen.zona in zonas
-                and solicitud.destino.zona in zonas
-                and carga.es_compatible_con(self)
-                and self._bateria.alcanza_para(consumo))
+        if not self._bateria.alcanza_para(consumo):
+            return f"batería insuficiente: {self.nivel_bateria:.0f} %"
+        return None
 
     # --- Operación: cada método cambia el estado del robot -----------------
     def cargar(self, carga, origen: Optional[Ubicacion] = None) -> None:
