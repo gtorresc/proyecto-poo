@@ -376,6 +376,12 @@ class PanelMapa(ctk.CTkFrame):
 
     # --- Capa viva: robots, rutas y balizas (cada 50 ms) ----------------------------------
     def _ciclo(self) -> None:
+        try:
+            self._refrescar()
+        finally:  # un error en un cuadro no debe detener la animación ni las siguientes entregas
+            self.after(INTERVALO_MS, self._ciclo)
+
+    def _refrescar(self) -> None:
         if self._centro.tick():
             self._al_completar()
         estado = self._centro.estado()
@@ -392,7 +398,6 @@ class PanelMapa(ctk.CTkFrame):
             self._paleta, self._resaltados, self._vista_dibujada = paleta, resaltados, vista
             self._dibujar_fondo()
         self._dibujar_vivo(estado)
-        self.after(INTERVALO_MS, self._ciclo)
 
     def _dibujar_vivo(self, estado: dict) -> None:
         c, cam = self.canvas, self.camara

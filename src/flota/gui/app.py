@@ -134,8 +134,10 @@ class App(ctk.CTk):
             f"mantenimiento: {r['mantenimiento']}   |   {CREDITOS}"))
 
     def _ciclo(self) -> None:
-        self.actualizar()
-        self.after(1000, self._ciclo)  # el clima real llega desde otro hilo
+        try:
+            self.actualizar()
+        finally:  # el clima real llega desde otro hilo: un error no debe cortar el refresco
+            self.after(1000, self._ciclo)
 
 
 def main(real: bool = False) -> None:
