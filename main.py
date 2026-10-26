@@ -8,7 +8,7 @@ from flota.asignacion.asignador import AsignadorEntregas
 from flota.campus import cargar_campus
 from flota.dominio.bitacora import Bitacora
 from flota.dominio.carga import Alimento, Documento, Fragil, MaterialPeligroso
-from flota.dominio.solicitud import SolicitudEntrega
+from flota.dominio.solicitud import EstadoSolicitud, SolicitudEntrega
 from flota.servicios.clima_open_meteo import ServicioClimaOpenMeteo
 from flota.servicios.clima_simulado import ServicioClimaSimulado
 
@@ -43,13 +43,10 @@ def main(real: bool = False) -> None:
     print("\n== Se completan las entregas y mejora el clima ==")
     if not real:
         simulado.configurar(viento=10, rafagas=15, lluvia=10, dia=True)
-    for s in pedidas:
-        if s.estado.value == "asignada":
-            asignador.completar_entrega(s)
-    asignador.reintentar_pendientes()
-    for s in pedidas:
-        if s.estado.value == "asignada":
-            asignador.completar_entrega(s)
+    for _ in range(2):  # cada entrega completada reintenta las pendientes; la segunda vuelta entrega esas
+        for s in pedidas:
+            if s.estado is EstadoSolicitud.ASIGNADA:
+                asignador.completar_entrega(s)
 
     print("\n" + bitacora.generar_reporte())
 
