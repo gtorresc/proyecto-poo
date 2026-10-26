@@ -15,3 +15,7 @@ env/
 
 # Reportes exportados por la aplicación
 reportes/
+
+# Salida intermedia de graphify (el grafo versionado vive en .context/)
+graphify-out/
+.context/cache/

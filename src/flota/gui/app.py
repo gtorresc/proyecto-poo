@@ -55,8 +55,12 @@ class App(ctk.CTk):
         self.actualizar()
 
     def _ciclo(self) -> None:
-        self.actualizar()
-        self.after(1000, self._ciclo)  # por si el dominio cambia sin que la GUI lo sepa
+        try:
+            if self.asignador.liberar_mantenimientos():  # un robot recargado puede atender pendientes
+                self.asignador.reintentar_pendientes()
+            self.actualizar()
+        finally:  # se reprograma aunque falle: si no, la ventana deja de refrescarse para siempre
+            self.after(1000, self._ciclo)  # por si el dominio cambia sin que la GUI lo sepa
 
 
 def main(real: bool = False) -> None:

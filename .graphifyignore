@@ -1,0 +1,4 @@
+# graphify: solo el código de la aplicación (ver .context/actualizar_grafo.sh)
+tests/
+docs/
+.context/

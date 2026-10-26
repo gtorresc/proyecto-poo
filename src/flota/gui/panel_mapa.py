@@ -71,8 +71,10 @@ class PanelMapa(ctk.CTkFrame):
         self._ciclo()
 
     def _ciclo(self) -> None:
-        self.refrescar()
-        self.after(INTERVALO_MS, self._ciclo)
+        try:
+            self.refrescar()
+        finally:  # un error en una entrega no debe detener la animación ni las siguientes entregas
+            self.after(INTERVALO_MS, self._ciclo)
 
     def refrescar(self) -> None:
         ahora = self._reloj()
