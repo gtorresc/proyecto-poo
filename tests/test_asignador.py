@@ -162,3 +162,20 @@ def test_una_pendiente_reasignada_entra_en_curso(entorno):
     clima.configurar(viento=10, rafagas=15, lluvia=10, dia=True)
     asignador.reintentar_pendientes()
     assert asignador.en_curso == (s,)
+
+
+def test_reintentar_no_repite_el_rechazo_por_clima_y_actualiza_el_motivo(entorno):
+    flota, bitacora, clima, asignador = entorno
+    clima.configurar(viento=45, rafagas=50, lluvia=10, dia=True)
+    s = SolicitudEntrega(CAFETERIA, AZOTEA, Documento("Acta", 1))  # solo el dron llega a la azotea
+    assert not asignador.asignar(s)
+    for viento in range(46, 66):  # el operador arrastra el deslizador del viento
+        clima.configurar(viento=viento, rafagas=viento + 5, lluvia=10, dia=True)
+        asignador.reintentar_pendientes()
+    assert len(bitacora.filtrar(TipoEvento.RECHAZO_CLIMA)) == 1  # solo el primer intento
+    assert s.motivo == "clima desfavorable para el dron"
+    flota.buscar("D-01").cargar(Documento("Otra", 1))  # el clima mejora, pero el dron ya está ocupado
+    clima.configurar(viento=10, rafagas=15, lluvia=10, dia=True)
+    asignador.reintentar_pendientes()
+    assert s.motivo == "ningún robot disponible puede atenderla" and s in asignador.pendientes
+

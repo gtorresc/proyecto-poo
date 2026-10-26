@@ -1,5 +1,6 @@
 """Clima real desde Open-Meteo. Cualquier fallo se convierte en un reporte no disponible."""
-from typing import Optional
+import time
+from typing import Callable, Optional
 
 import requests
 
@@ -9,15 +10,31 @@ from flota.servicios.proveedor_clima import ProveedorClima, ReporteClima, Umbral
 URL = "https://api.open-meteo.com/v1/forecast"
 TIMEOUT_S = 5
 CODIGOS_TORMENTA = range(95, 100)  # códigos WMO 95-99: tormenta eléctrica (con o sin granizo)
+CACHE_S = 300        # el clima no cambia en segundos: una consulta cada 5 min por zona basta
+CACHE_FALLO_S = 30   # sin red, no esperar el timeout en cada asignación
 
 
 class ServicioClimaOpenMeteo(ProveedorClima):
 
-    def __init__(self, umbrales: Optional[UmbralesClima] = None, timeout_s: float = TIMEOUT_S):
+    def __init__(self, umbrales: Optional[UmbralesClima] = None, timeout_s: float = TIMEOUT_S,
+                 reloj: Callable[[], float] = time.monotonic):
         super().__init__(umbrales)
         self._timeout_s = timeout_s
+        self._reloj = reloj
+        self._cache: dict[tuple[float, float], tuple[float, ReporteClima]] = {}  # zona -> (vence, reporte)
 
     def obtener_reporte(self, ubicacion: Ubicacion) -> ReporteClima:
+        """Reutiliza la última respuesta de la misma zona (~1 km) mientras no venza."""
+        zona = (round(ubicacion.latitud, 2), round(ubicacion.longitud, 2))
+        ahora = self._reloj()
+        guardado = self._cache.get(zona)
+        if guardado and ahora < guardado[0]:
+            return guardado[1]
+        reporte = self._consultar(ubicacion)
+        self._cache[zona] = (ahora + (CACHE_S if reporte.disponible else CACHE_FALLO_S), reporte)
+        return reporte
+
+    def _consultar(self, ubicacion: Ubicacion) -> ReporteClima:
         params = {
             "latitude": ubicacion.latitud, "longitude": ubicacion.longitud,
             "current": ("wind_speed_10m,wind_gusts_10m,temperature_2m,is_day,visibility,"

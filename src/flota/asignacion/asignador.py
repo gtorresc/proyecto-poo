@@ -101,9 +101,13 @@ class AsignadorEntregas:
         """Devuelve cuántas pendientes lograron asignarse."""
         logradas = 0
         for solicitud in list(self._pendientes):
-            if self._intentar(solicitud)[0]:
+            # el rechazo por clima ya quedó en la bitácora la primera vez: no se repite en cada intento
+            asignada, motivo = self._intentar(solicitud, registrar=False)
+            if asignada:
                 self._pendientes.remove(solicitud)
                 logradas += 1
+            else:
+                solicitud.marcar_pendiente(motivo)  # el motivo puede haber cambiado (clima, festivo...)
         return logradas
 
     def _motivo_festivo(self, solicitud: SolicitudEntrega) -> Optional[str]:
@@ -113,7 +117,7 @@ class AsignadorEntregas:
                 return f"cafetería cerrada (festivo: {festivo})"
         return None
 
-    def _intentar(self, solicitud: SolicitudEntrega) -> tuple[bool, str]:
+    def _intentar(self, solicitud: SolicitudEntrega, registrar: bool = True) -> tuple[bool, str]:
         motivo = self._motivo_festivo(solicitud)
         if motivo:
             return False, motivo
@@ -127,8 +131,9 @@ class AsignadorEntregas:
                     reporte = self._proveedor_clima.obtener_reporte(solicitud.destino)
                 favorable, motivo = reporte.es_favorable(self._proveedor_clima.umbrales)
                 if not favorable:
-                    self._bitacora.registrar(TipoEvento.RECHAZO_CLIMA,
-                                             f"Solicitud {solicitud.id}: {motivo}", robot.id)
+                    if registrar:
+                        self._bitacora.registrar(TipoEvento.RECHAZO_CLIMA,
+                                                 f"Solicitud {solicitud.id}: {motivo}", robot.id)
                     rechazada_por_clima = True
                     continue
             elegido = costo, robot

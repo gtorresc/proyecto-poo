@@ -81,3 +81,38 @@ def test_cualquier_fallo_deja_el_clima_no_disponible(monkeypatch, respuesta, exc
     servicio = ServicioClimaOpenMeteo()
     assert not servicio.obtener_reporte(AZOTEA).disponible
     assert not servicio.condiciones_favorables(AZOTEA)
+
+
+def test_dos_consultas_seguidas_hacen_una_sola_peticion(monkeypatch):
+    pedidos = []
+
+    def falso_get(url, params, timeout):
+        pedidos.append(params["latitude"])
+        return RespuestaFalsa(JSON_EJEMPLO)
+    monkeypatch.setattr(clima_open_meteo.requests, "get", falso_get)
+    reloj = [1000.0]
+    servicio = ServicioClimaOpenMeteo(reloj=lambda: reloj[0])
+    vecina = Ubicacion("Azotea vecina", 6.2321, -75.6114, Zona.AZOTEA)  # misma zona de ~1 km
+    assert servicio.obtener_reporte(AZOTEA).disponible and servicio.obtener_reporte(vecina).disponible
+    assert len(pedidos) == 1
+    reloj[0] += clima_open_meteo.CACHE_S
+    servicio.obtener_reporte(AZOTEA)  # venció: se consulta otra vez
+    assert len(pedidos) == 2
+
+
+def test_sin_red_tampoco_espera_el_timeout_en_cada_consulta(monkeypatch):
+    intentos = []
+
+    def sin_red(url, params, timeout):
+        intentos.append(1)
+        raise requests.ConnectionError("sin internet")
+    monkeypatch.setattr(clima_open_meteo.requests, "get", sin_red)
+    reloj = [0.0]
+    servicio = ServicioClimaOpenMeteo(reloj=lambda: reloj[0])
+    for _ in range(5):
+        assert not servicio.obtener_reporte(AZOTEA).disponible
+    assert len(intentos) == 1
+    reloj[0] += clima_open_meteo.CACHE_FALLO_S  # pasado el plazo se reintenta
+    servicio.obtener_reporte(AZOTEA)
+    assert len(intentos) == 2
+
