@@ -91,3 +91,14 @@ def test_la_web_recibe_la_paleta_de_python(puente):
     assert t["neblina"]["satelite"] == tema.NEBLINA["satelite"]
     pagina = (PAGINA.parent / "mapa2d.js").read_text(encoding="utf-8")
     assert "#1d7f7b" not in pagina  # el JS ya no tiene su propia copia de los colores
+
+
+def test_exportar_a_una_carpeta_que_no_existe_vuelve_como_error(puente, tmp_path):
+    class Ventana:
+        def create_file_dialog(self, *args, **kwargs):
+            return str(tmp_path / "no_existe" / "reporte.txt")
+    puente._ventana = Ventana()
+    assert "no se pudo guardar" in puente.exportar_bitacora()["error"]
+    puente._ventana.create_file_dialog = lambda *a, **k: str(tmp_path / "reporte.txt")
+    assert puente.exportar_bitacora() == str(tmp_path / "reporte.txt")
+    assert "REPORTE" in (tmp_path / "reporte.txt").read_text(encoding="utf-8")

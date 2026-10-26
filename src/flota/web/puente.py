@@ -88,8 +88,8 @@ class PuenteWeb:
     def configurar_festivo(self, nombre):
         return self._llamar(self._centro.configurar_festivo, nombre or None)
 
-    def exportar_bitacora(self) -> str:
-        """Abre el diálogo de guardar; devuelve la ruta o '' si se canceló."""
+    def exportar_bitacora(self):
+        """Abre el diálogo de guardar; devuelve la ruta, '' si se canceló o {'error': ...} si no se pudo escribir."""
         import webview
         with self._candado:
             reporte = self._centro.exportar_bitacora()
@@ -97,6 +97,9 @@ class PuenteWeb:
         if not rutas:
             return ""
         ruta = rutas if isinstance(rutas, str) else rutas[0]
-        with open(ruta, "w", encoding="utf-8") as archivo:
-            archivo.write(reporte)
+        try:
+            with open(ruta, "w", encoding="utf-8") as archivo:
+                archivo.write(reporte)
+        except OSError as error:  # carpeta sin permiso, archivo abierto en otro programa...
+            return {"error": f"no se pudo guardar el reporte: {error.strerror or error}"}
         return ruta

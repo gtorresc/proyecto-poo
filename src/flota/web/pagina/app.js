@@ -268,7 +268,10 @@ function conectarControles() {
   $("boton-girar").addEventListener("click", () => mapa.girar());
   $("boton-mas").addEventListener("click", () => mapa.acercar(1.4));
   $("boton-menos").addEventListener("click", () => mapa.acercar(1 / 1.4));
-  $("boton-exportar").addEventListener("click", () => api.exportar_bitacora());
+  $("boton-exportar").addEventListener("click", async () => {
+    const r = await api.exportar_bitacora();
+    if (r && r.error) avisar(r.error);
+  });
 
   segmentado($("selector-clima"), real => { api.usar_clima(real); $("simulador").querySelectorAll("input").forEach(i => i.disabled = real); });
   segmentado($("selector-calendario"), real => { api.usar_calendario(real); $("festivo").disabled = real; });

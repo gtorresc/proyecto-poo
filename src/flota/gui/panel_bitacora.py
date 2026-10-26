@@ -1,5 +1,5 @@
 """Radio: la bitácora como un registro de despacho, coloreada por tipo, y exportación del reporte."""
-from tkinter import filedialog
+from tkinter import filedialog, messagebox
 
 import customtkinter as ctk
 
@@ -43,6 +43,11 @@ class PanelBitacora(ctk.CTkFrame):
     def _exportar(self) -> None:
         ruta = filedialog.asksaveasfilename(defaultextension=".txt", initialfile="reporte_flota.txt",
                                             filetypes=[("Texto", "*.txt")])
-        if ruta:
+        if not ruta:
+            return
+        try:
             with open(ruta, "w", encoding="utf-8") as archivo:
                 archivo.write(self._centro.exportar_bitacora())
+        except OSError as error:  # carpeta sin permiso, archivo abierto en otro programa...
+            messagebox.showerror("Exportar bitácora", f"No se pudo guardar el reporte:
+{error}")
