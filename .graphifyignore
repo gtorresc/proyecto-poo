@@ -1,0 +1,5 @@
+# graphify: solo el código de la aplicación
+tests/
+docs/
+reportes/
+src/flota/web/pagina/vendor/
