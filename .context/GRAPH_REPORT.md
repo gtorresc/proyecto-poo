@@ -4,100 +4,157 @@
 - cluster-only mode — file stats not available
 
 ## Summary
-- 306 nodes · 610 edges · 14 communities (7 shown, 7 thin omitted)
-- Extraction: 89% EXTRACTED · 11% INFERRED · 0% AMBIGUOUS · INFERRED: 66 edges (avg confidence: 0.92)
+- 690 nodes · 1412 edges · 40 communities (15 shown, 25 thin omitted)
+- Extraction: 92% EXTRACTED · 8% INFERRED · 0% AMBIGUOUS · INFERRED: 106 edges (avg confidence: 0.91)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `7af5e808`
+- Built from commit: `e2d7ae18`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
 ## Community Hubs (Navigation)
-- Asignación: AsignadorEntregas, SolicitudEntrega y cargas
-- Núcleo del dominio: Robot, Flota y Ubicacion
+- Módulo web/pagina/mapa2d.js
+- Módulo scripts/descargar_campus_osm.py
 - Clima: proveedores, reporte y umbrales
-- Subtipos de robot, Zona y carga del campus
+- Presentación compartida: CentroControl
+- Jerarquía Carga
+- Módulo web/pagina/app.js
+- Módulo dominio/ruta.py
+- Ciclo de vida de SolicitudEntrega
+- Módulo gui/app.py
+- Web: PuenteWeb y página
+- Núcleo del dominio: Robot, Flota y Ubicacion
 - GUI: ventana App y paneles
 - Enumeraciones de estado
-- Bitácora y eventos
-- Batería
+- Asignación: AsignadorEntregas, SolicitudEntrega y cargas
 - GUI: PanelMapa y animación
+- Módulo dominio/solicitud.py
+- GUI: Camara y proyección 2D/3D
+- Módulo dominio/bitacora.py
+- Subtipos de robot, Zona y carga del campus
+- GUI: efectos de clima en el mapa
+- GUI: plantilla y fichas de robots
+- Ubicacion y Zona
+- Módulo servicios/calendario_nager_date.py
+- Módulo gui/centro_control.py
+- GUI: PanelClima
+- Módulo campus.py
+- GUI: widget del clima
+- Módulo dominio/robot.py
+- Módulo servicios/calendario_simulado.py
+- Módulo gui/panel_solicitud.py
+- Módulo gui/plantilla.py
+- Módulo gui/panel_mapa.py
 
 ## God Nodes (most connected - your core abstractions)
-1. `Robot` - 43 edges
-2. `Ubicacion` - 42 edges
-3. `SolicitudEntrega` - 31 edges
-4. `AsignadorEntregas` - 22 edges
-5. `ReporteClima` - 19 edges
-6. `Zona` - 17 edges
-7. `Carga` - 16 edges
-8. `ProveedorClima` - 16 edges
-9. `main()` - 16 edges
-10. `UmbralesClima` - 15 edges
+1. `Ubicacion` - 52 edges
+2. `Robot` - 47 edges
+3. `CentroControl` - 39 edges
+4. `SolicitudEntrega` - 35 edges
+5. `PanelMapa` - 30 edges
+6. `AsignadorEntregas` - 28 edges
+7. `ReporteClima` - 24 edges
+8. `App` - 22 edges
+9. `Mapa3D` - 21 edges
+10. `RedSenderos` - 19 edges
 
 ## Surprising Connections (you probably didn't know these)
+- `main()` --uses--> `AsignadorEntregas`  [INFERRED]
+  main.py → src/flota/asignacion/asignador.py
+- `main()` --uses--> `Bitacora`  [INFERRED]
+  main.py → src/flota/dominio/bitacora.py
+- `main()` --uses--> `EstadoSolicitud`  [INFERRED]
+  main.py → src/flota/dominio/solicitud.py
 - `main()` --uses--> `ServicioClimaOpenMeteo`  [INFERRED]
   main.py → src/flota/servicios/clima_open_meteo.py
 - `main()` --uses--> `ServicioClimaSimulado`  [INFERRED]
   main.py → src/flota/servicios/clima_simulado.py
-- `main()` --uses--> `Bitacora`  [INFERRED]
-  main.py → src/flota/dominio/bitacora.py
-- `main()` --uses--> `AsignadorEntregas`  [INFERRED]
-  main.py → src/flota/asignacion/asignador.py
-- `main()` --uses--> `Alimento`  [INFERRED]
-  main.py → src/flota/dominio/carga.py
 
 ## Import Cycles
 - None detected.
 
-## Communities (14 total, 7 thin omitted)
+## Communities (40 total, 25 thin omitted)
 
-### Community 0 - "Asignación: AsignadorEntregas, SolicitudEntrega y cargas"
+### Community 0 - "Módulo web/pagina/mapa2d.js"
+Cohesion: 0.08
+Nodes (19): ALTURA_NUBES_M, azarFijo(), dibujarEncima(), dibujarLuces(), difuminarBordes(), NEBLINA, posicionNube(), puntoEnPoligono() (+11 more)
+
+### Community 1 - "Módulo scripts/descargar_campus_osm.py"
 Cohesion: 0.06
-Nodes (9): main(), pedir(), AsignadorEntregas, Alimento, Carga, Documento, Fragil, MaterialPeligroso (+1 more)
-
-### Community 1 - "Núcleo del dominio: Robot, Flota y Ubicacion"
-Cohesion: 0.07
-Nodes (3): Flota, Robot, Ubicacion
+Nodes (17): a_texto(), convertir(), main(), _niveles(), _puntos(), ambiente(), punto_en_recorrido(), a_pixel() (+9 more)
 
 ### Community 2 - "Clima: proveedores, reporte y umbrales"
 Cohesion: 0.07
-Nodes (6): main(), ServicioClimaOpenMeteo, ServicioClimaSimulado, ProveedorClima, ReporteClima, UmbralesClima
+Nodes (5): ServicioClimaOpenMeteo, ServicioClimaSimulado, ProveedorClima, ReporteClima, UmbralesClima
 
-### Community 3 - "Subtipos de robot, Zona y carga del campus"
-Cohesion: 0.06
-Nodes (6): cargar_campus(), Dron, RobotOrugas, RobotRuedas, Zona, _AdaptadorIPv4
+### Community 3 - "Presentación compartida: CentroControl"
+Cohesion: 0.09
+Nodes (3): a_metros(), CentroControl, leer()
 
-### Community 4 - "GUI: ventana App y paneles"
+### Community 4 - "Jerarquía Carga"
+Cohesion: 0.08
+Nodes (7): main(), pedir(), Alimento, Carga, Documento, Fragil, MaterialPeligroso
+
+### Community 5 - "Módulo web/pagina/app.js"
 Cohesion: 0.12
-Nodes (5): App, PanelBitacora, PanelClima, PanelFlota, PanelSolicitud
+Nodes (32): abrirLlamada(), anunciar(), avisar(), cambiarVista(), cerrarLlamada(), ciclo(), COLOR_EVENTO, conectarControles() (+24 more)
 
-### Community 5 - "Enumeraciones de estado"
-Cohesion: 0.11
-Nodes (3): EstadoRobot, EstadoSolicitud, color_bateria()
-
-### Community 6 - "Bitácora y eventos"
+### Community 8 - "Módulo gui/app.py"
 Cohesion: 0.14
-Nodes (3): Bitacora, EventoBitacora, TipoEvento
+Nodes (3): main(), aplicar_tema(), fuente()
+
+### Community 11 - "GUI: ventana App y paneles"
+Cohesion: 0.17
+Nodes (3): App, PanelBitacora, FichaSolicitud
+
+### Community 13 - "Asignación: AsignadorEntregas, SolicitudEntrega y cargas"
+Cohesion: 0.17
+Nodes (4): AsignadorEntregas, Bitacora, crear_centro(), ProveedorCalendario
+
+### Community 18 - "Subtipos de robot, Zona y carga del campus"
+Cohesion: 0.14
+Nodes (3): Dron, RobotRuedas, Zona
+
+### Community 19 - "GUI: efectos de clima en el mapa"
+Cohesion: 0.17
+Nodes (4): CapaClima, gotas(), posicion_nube(), sprite_nube()
+
+### Community 20 - "GUI: plantilla y fichas de robots"
+Cohesion: 0.15
+Nodes (4): Plantilla, TarjetaRobot, icono(), retrato()
+
+### Community 24 - "Módulo gui/centro_control.py"
+Cohesion: 0.20
+Nodes (4): dentro(), caras_visibles(), edificio_bajo(), oscurecer()
+
+### Community 26 - "Módulo campus.py"
+Cohesion: 0.43
+Nodes (3): cargar_campus(), cargar_geometria(), crear_red_senderos()
+
+### Community 28 - "GUI: widget del clima"
+Cohesion: 0.29
+Nodes (3): rumbo(), texto_clima(), WidgetClima
 
 ## Knowledge Gaps
-- **7 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **9 isolated node(s):** `sprites`, `COLOR_EVENTO`, `EJES`, `ETIQUETA`, `mosaicos` (+4 more)
+  These have ≤1 connection - possible missing edges. (Counts symbols only; 255 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+- **25 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `Ubicacion` connect `Núcleo del dominio: Robot, Flota y Ubicacion` to `Asignación: AsignadorEntregas, SolicitudEntrega y cargas`, `Clima: proveedores, reporte y umbrales`, `Subtipos de robot, Zona y carga del campus`, `Enumeraciones de estado`?**
-  _High betweenness centrality (0.282) - this node is a cross-community bridge._
-- **Are the 5 inferred relationships involving `Robot` (e.g. with `Flota` and `Bateria`) actually correct?**
-  _`Robot` has 5 INFERRED edges - model-reasoned connections that need verification._
-- **Should `Asignación: AsignadorEntregas, SolicitudEntrega y cargas` be split into smaller, more focused modules?**
-  _Cohesion score 0.05714285714285714 - nodes in this community are weakly interconnected._
-- **Why does `Robot` connect `Núcleo del dominio: Robot, Flota y Ubicacion` to `Subtipos de robot, Zona y carga del campus`, `Enumeraciones de estado`, `Batería`?**
-  _High betweenness centrality (0.169) - this node is a cross-community bridge._
-- **Are the 8 inferred relationships involving `Ubicacion` (e.g. with `Dron` and `Robot`) actually correct?**
-  _`Ubicacion` has 8 INFERRED edges - model-reasoned connections that need verification._
-- **Should `Núcleo del dominio: Robot, Flota y Ubicacion` be split into smaller, more focused modules?**
-  _Cohesion score 0.0653061224489796 - nodes in this community are weakly interconnected._
-- **Why does `SolicitudEntrega` connect `Asignación: AsignadorEntregas, SolicitudEntrega y cargas` to `Núcleo del dominio: Robot, Flota y Ubicacion`, `Clima: proveedores, reporte y umbrales`, `GUI: ventana App y paneles`, `Enumeraciones de estado`?**
-  _High betweenness centrality (0.141) - this node is a cross-community bridge._
+- **Why does `CentroControl` connect `Presentación compartida: CentroControl` to `Clima: proveedores, reporte y umbrales`, `Ciclo de vida de SolicitudEntrega`, `Módulo gui/app.py`, `GUI: ventana App y paneles`, `Enumeraciones de estado`, `Asignación: AsignadorEntregas, SolicitudEntrega y cargas`, `Módulo servicios/calendario_nager_date.py`, `Módulo servicios/calendario_simulado.py`?**
+  _High betweenness centrality (0.130) - this node is a cross-community bridge._
+- **Are the 10 inferred relationships involving `Ubicacion` (e.g. with `Dron` and `Robot`) actually correct?**
+  _`Ubicacion` has 10 INFERRED edges - model-reasoned connections that need verification._
+- **What connects `sprites`, `COLOR_EVENTO`, `EJES` to the rest of the system?**
+  _9 weakly-connected nodes found - possible documentation gaps or missing edges._
+- **Should `Módulo web/pagina/mapa2d.js` be split into smaller, more focused modules?**
+  _Cohesion score 0.08045977011494253 - nodes in this community are weakly interconnected._
+- **Why does `Ubicacion` connect `Ubicacion y Zona` to `Clima: proveedores, reporte y umbrales`, `Jerarquía Carga`, `Módulo dominio/ruta.py`, `Ciclo de vida de SolicitudEntrega`, `Núcleo del dominio: Robot, Flota y Ubicacion`, `Enumeraciones de estado`, `Módulo dominio/solicitud.py`, `Subtipos de robot, Zona y carga del campus`, `Módulo dominio/bateria.py`, `Módulo campus.py`, `Módulo dominio/robot.py`?**
+  _High betweenness centrality (0.112) - this node is a cross-community bridge._
+- **Are the 7 inferred relationships involving `Robot` (e.g. with `Flota` and `Bateria`) actually correct?**
+  _`Robot` has 7 INFERRED edges - model-reasoned connections that need verification._
+- **Should `Módulo scripts/descargar_campus_osm.py` be split into smaller, more focused modules?**
+  _Cohesion score 0.06205673758865248 - nodes in this community are weakly interconnected._

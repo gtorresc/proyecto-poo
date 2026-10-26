@@ -12,5 +12,13 @@
   "PanelClima": "GUI: PanelClima",
   "SolicitudEntrega": "Ciclo de vida de SolicitudEntrega",
   "Dron": "Subtipos de robot",
-  "Ubicacion": "Ubicacion y Zona"
+  "Ubicacion": "Ubicacion y Zona",
+  "CentroControl": "Presentación compartida: CentroControl",
+  "PuenteWeb": "Web: PuenteWeb y página",
+  "Camara": "GUI: Camara y proyección 2D/3D",
+  "CapaClima": "GUI: efectos de clima en el mapa",
+  "RedSenderos": "Rutas: Ruta y RedSenderos",
+  "ProveedorCalendario": "Calendario: festivos",
+  "Plantilla": "GUI: plantilla y fichas de robots",
+  "WidgetClima": "GUI: widget del clima"
 }
