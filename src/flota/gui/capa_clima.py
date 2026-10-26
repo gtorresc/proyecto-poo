@@ -55,28 +55,32 @@ class CapaClima:
 
     def __init__(self, canvas, geo: dict):
         self._canvas, self._geo = canvas, geo
-        self._sprites = {}  # (nube, escala, opacidad) -> imagen; se rehacen solo si cambia el zoom
+        self._sprites = {}  # (nube, opacidad) -> imagen, solo para el zoom actual
+        self._escala_sprites = None
         self._velos = {}
 
-    def luces(self, ambiente: dict, camara) -> None:
-        if not ambiente["noche"]:
-            return
+    def luces(self, camara) -> None:
+        """Ventanas encendidas de noche. No se mueven: van en la capa del fondo, que solo se redibuja
+        cuando cambia la cámara."""
         c = self._canvas
         for x, y, z in self._geo["luces"]:
             sx, sy = camara.proyectar(x, y, z if camara.modo == "3D" else 0)
-            c.create_oval(sx - 4, sy - 4, sx + 4, sy + 4, fill="#6b5a24", outline="", tags="vivo")
-            c.create_oval(sx - 2, sy - 2, sx + 2, sy + 2, fill="#ffd36b", outline="", tags="vivo")
+            c.create_oval(sx - 4, sy - 4, sx + 4, sy + 4, fill="#6b5a24", outline="", tags="fondo")
+            c.create_oval(sx - 2, sy - 2, sx + 2, sy + 2, fill="#ffd36b", outline="", tags="fondo")
 
     def encima(self, ambiente: dict, camara, t: float) -> None:
         """Nubes, lluvia, niebla y relámpagos, encima de los robots."""
         c, ancho, alto = self._canvas, camara.ancho, camara.alto
         opacidad = round(ambiente["nubes"] * 0.6, 1)
-        escala = round(camara.escala, 2)
+        escala = (round(camara.escala, 2), camara.modo)
+        if escala != self._escala_sprites:  # cambió el zoom: las imágenes viejas ya no sirven
+            self._sprites.clear()
+            self._escala_sprites = escala
         aplastar = 0.62 if camara.modo == "3D" else 1.0
         for i, nube in enumerate(self._geo["nubes"][:round(len(self._geo["nubes"]) * ambiente["nubes"])]):
-            clave = (i, escala, opacidad, aplastar)
+            clave = (i, opacidad)
             if clave not in self._sprites:
-                lado = int(nube["radio"] * 2 * escala)
+                lado = int(nube["radio"] * 2 * camara.escala)
                 self._sprites[clave] = ImageTk.PhotoImage(
                     sprite_nube(nube["semilla"], lado, int(lado * aplastar), opacidad))
             x, y = posicion_nube(nube, ambiente["viento"], t, self._geo["limites"])

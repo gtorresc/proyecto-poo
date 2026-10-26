@@ -289,6 +289,8 @@ class PanelMapa(ctk.CTkFrame):
                        else (p["ciudad"], p["pared_ciudad"], p["arista_ciudad"]))
             self._dibujar_edificio(e, colores, 1.5 if e["en_campus"] else 1)
         self._credito(self._geo["fuente"].split(",")[0], p["arista"])
+        if p is tema.NOCHE:
+            self._clima.luces(cam)
         c.tag_lower("fondo")
 
     def _orden_edificios(self) -> list[int]:
@@ -332,6 +334,8 @@ class PanelMapa(ctk.CTkFrame):
                     tono = tuple(oscurecer(t, 0.45) for t in tono)
             self._dibujar_edificio(edificios[i], tono, 1)
         self._credito(CAPAS[vista]["credito"], "#f3efe4")
+        if noche:
+            self._clima.luces(cam)
 
     def _dibujar_edificio(self, edificio: dict, colores: tuple, grosor: float) -> None:
         c, cam = self.canvas, self.camara
@@ -397,7 +401,6 @@ class PanelMapa(ctk.CTkFrame):
             if len(r["recorrido"]) >= 2:
                 c.create_line([v for x, y in r["recorrido"] for v in cam.proyectar(x, y)],
                               fill=tema.FRANJA[r["franja"]], width=3, dash=(6, 4), tags="vivo")
-        self._clima.luces(estado["ambiente"], cam)
         self._en_pantalla = {"balizas": [], "robots": []}
         for b in estado["balizas"]:
             alto = self._geo["edificios"][b["edificio"]]["altura"] if b["edificio"] is not None else 0

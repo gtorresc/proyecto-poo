@@ -32,6 +32,7 @@ ALTURA_VUELO_M = 30
 SEPARACION_M = 24  # robots quietos en el mismo lugar se dibujan en ronda, para que no se tapen
 EVENTOS_VISIBLES = 50
 NUBES = 10  # cuántas nubes cruzan el mapa como máximo
+REFRESCO_CLIMA_S = 300  # el clima real se vuelve a leer cada 5 min (la píldora no queda con el dato del arranque)
 
 TIPOS_CARGA = {  # clave -> (nombre en pantalla, fábrica a partir del peso)
     "documento": ("Documento", lambda peso: Documento("Documento", peso)),
@@ -83,11 +84,14 @@ class CentroControl:
         self._calendario_simulado = CalendarioSimulado()
         self._calendario_real = calendario_real or CalendarioNagerDate()
         self._reporte = None   # lo escribe un hilo si el clima es real
+        self._clima_leido = reloj()
         self._festivo = None   # nombre del festivo de hoy, o None
         self._bandeja: list[SolicitudEntrega] = []  # creadas, esperando que el operador las despache
         self._creada_en: dict[int, float] = {}
         self._viajes: dict[int, tuple[float, float, list]] = {}  # id solicitud -> (inicio, duración, puntos en m)
         self._mantenimiento_desde: dict[str, float] = {}
+        # dónde estaba cada robot antes de su viaje: al asignarlo, el dominio ya lo deja en el origen
+        self._de_donde: dict[str, object] = {r.id: r.ubicacion for r in flota.robots}
         self._geometria = self._preparar_geometria(geometria)
 
     # --- Datos fijos -------------------------------------------------------
@@ -190,6 +194,7 @@ class CentroControl:
 
     # --- Lecturas de la red en segundo plano --------------------------------
     def _leer_clima(self) -> None:
+        self._clima_leido = self._reloj()
         proveedor = self._asignador.proveedor_clima
         if proveedor is self._clima_simulado:
             self._reporte = proveedor.obtener_reporte(self._punto_clima())
@@ -221,22 +226,33 @@ class CentroControl:
     def tick(self) -> bool:
         """Avanza los viajes y el mantenimiento. True si algo terminó (para refrescar la vista)."""
         ahora = self._reloj()
+        ocupados = {s.robot.id for s in self._asignador.en_curso}
+        for robot in self._flota.robots:
+            if robot.id not in ocupados:
+                self._de_donde[robot.id] = robot.ubicacion
         for solicitud in self._asignador.en_curso:
             if solicitud.id not in self._viajes:
                 self._iniciar_viaje(solicitud, ahora)
         llegadas = [s for s in self._asignador.en_curso if self._progreso(s.id, ahora) >= 1]
         for solicitud in llegadas:
             del self._viajes[solicitud.id]
+            self._de_donde[solicitud.robot.id] = solicitud.destino  # por si se reasigna en este mismo tick
             self._asignador.completar_entrega(solicitud)  # el robot queda en el destino
+        if self._asignador.proveedor_clima is self._clima_real and ahora - self._clima_leido >= REFRESCO_CLIMA_S:
+            self._leer_clima()
         listos = self._terminar_mantenimientos(ahora)
         return bool(llegadas or listos)
 
     def _iniciar_viaje(self, solicitud, ahora: float) -> None:
+        """El viaje va de donde estaba el robot al origen, y del origen al destino.
+
+        El recorrido sale del propio robot (el dron vuela recto) y la duración es el mismo tiempo
+        estimado que muestra la ficha."""
         o, d, robot = solicitud.origen, solicitud.destino, solicitud.robot
-        # la duración y el recorrido salen del propio robot: el dron vuela recto y llega antes
-        duracion = max(MIN_VIAJE_S, robot.calcular_tiempo_min(o, d) * SEGUNDOS_POR_MINUTO)
-        puntos = [a_metros(*p) for p in robot.trazar_ruta(o, d).puntos]
-        self._viajes[solicitud.id] = (ahora, duracion, puntos)
+        antes = self._de_donde.get(robot.id, o)
+        tramos = ([] if antes is o else list(robot.trazar_ruta(antes, o).puntos)) + list(robot.trazar_ruta(o, d).puntos)
+        duracion = max(MIN_VIAJE_S, solicitud.tiempo_min * SEGUNDOS_POR_MINUTO)
+        self._viajes[solicitud.id] = (ahora, duracion, [a_metros(*p) for p in tramos])
 
     def _progreso(self, id_solicitud: int, ahora: float) -> float:
         inicio, duracion, _ = self._viajes[id_solicitud]
@@ -274,7 +290,8 @@ class CentroControl:
             solicitud = en_curso.get(robot.id)
             viaje = self._viajes.get(solicitud.id) if solicitud else None
             if viaje is None:  # quieto, o asignado pero el viaje empieza en el próximo tick
-                x, y = a_metros(robot.ubicacion.latitud, robot.ubicacion.longitud)
+                lugar = self._de_donde.get(robot.id, robot.ubicacion) if solicitud else robot.ubicacion
+                x, y = a_metros(lugar.latitud, lugar.longitud)
                 vecinos = quietos.get(id(robot.ubicacion), [robot.id])
                 if len(vecinos) > 1:
                     angulo = 2 * math.pi * vecinos.index(robot.id) / len(vecinos)

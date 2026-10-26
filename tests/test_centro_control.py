@@ -109,7 +109,8 @@ def test_el_dron_vuela_recto_y_en_altura(centro, reloj):
     centro.tick()
     reloj.ahora += 2
     dron = robot(centro, "D-01")
-    assert len(dron["recorrido"]) == 2 and dron["z"] > 0 and 0 < dron["mision"]["progreso"] < 1
+    # dos tramos rectos (de la estación a la biblioteca y de ahí a la azotea): 2 puntos cada uno
+    assert len(dron["recorrido"]) == 4 and dron["z"] > 0 and 0 < dron["mision"]["progreso"] < 1
 
 
 def test_despacho_manual_rechazado_deja_la_baliza_con_el_motivo(centro):
@@ -194,4 +195,18 @@ def test_luces_y_nubes_son_fijas_y_caen_en_el_mapa(centro):
     x0, y0, x1, y1 = geo["limites"]
     assert len(geo["nubes"]) == 10 and all(x0 <= n["x"] <= x1 and y0 <= n["y"] <= y1 for n in geo["nubes"])
     assert len(geo["luces"]) > 30 and all(z > 0 for _, _, z in geo["luces"])
+
+
+def test_el_robot_sale_de_donde_estaba_y_tarda_lo_que_dice_la_ficha(centro, reloj):
+    """Antes el robot aparecía de golpe en el origen y la animación duraba solo el segundo tramo."""
+    antes = robot(centro, "R-01")
+    id_sol = centro.crear_solicitud("biblioteca", "derecho", "documento", 1)
+    centro.despachar(id_sol, "R-01")
+    recien_asignado = robot(centro, "R-01")
+    assert (recien_asignado["x"], recien_asignado["y"]) == pytest.approx((antes["x"], antes["y"]), abs=30)
+    centro.tick()
+    inicio, duracion, recorrido = centro._viajes[id_sol]
+    estacion = next(u for u in centro.geometria()["ubicaciones"] if u["clave"] == "estacion")
+    assert recorrido[0] == pytest.approx((estacion["x"], estacion["y"]))  # sale de la estación
+    assert duracion == pytest.approx(robot(centro, "R-01")["mision"]["tiempo_min"] * 6)
 
