@@ -1,5 +1,6 @@
-# graphify: solo el código de la aplicación
+# graphify: solo el código de la aplicación (ver .context/actualizar_grafo.sh)
 tests/
 docs/
+.context/
 reportes/
 src/flota/web/pagina/vendor/

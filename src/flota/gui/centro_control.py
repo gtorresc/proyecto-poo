@@ -27,7 +27,6 @@ METROS_POR_PISO = 3.5
 PISOS_POR_DEFECTO = 2  # OSM solo trae los pisos de unos pocos edificios
 SEGUNDOS_POR_MINUTO = 6  # 1 min de viaje simulado = 6 s en pantalla
 MIN_VIAJE_S = 3  # los tramos cortos durarían menos de un parpadeo
-RECARGA_S = 10  # tiempo en pantalla que un robot pasa en mantenimiento
 ALTURA_VUELO_M = 30
 SEPARACION_M = 24  # robots quietos en el mismo lugar se dibujan en ronda, para que no se tapen
 EVENTOS_VISIBLES = 50
@@ -89,7 +88,6 @@ class CentroControl:
         self._bandeja: list[SolicitudEntrega] = []  # creadas, esperando que el operador las despache
         self._creada_en: dict[int, float] = {}
         self._viajes: dict[int, tuple[float, float, list]] = {}  # id solicitud -> (inicio, duración, puntos en m)
-        self._mantenimiento_desde: dict[str, float] = {}
         # dónde estaba cada robot antes de su viaje: al asignarlo, el dominio ya lo deja en el origen
         self._de_donde: dict[str, object] = {r.id: r.ubicacion for r in flota.robots}
         self._geometria = self._preparar_geometria(geometria)
@@ -240,7 +238,9 @@ class CentroControl:
             self._asignador.completar_entrega(solicitud)  # el robot queda en el destino
         if self._asignador.proveedor_clima is self._clima_real and ahora - self._clima_leido >= REFRESCO_CLIMA_S:
             self._leer_clima()
-        listos = self._terminar_mantenimientos(ahora)
+        listos = self._asignador.liberar_mantenimientos()  # la recarga la cronometra el dominio
+        if listos:
+            self._asignador.reintentar_pendientes()
         return bool(llegadas or listos)
 
     def _iniciar_viaje(self, solicitud, ahora: float) -> None:
@@ -257,18 +257,6 @@ class CentroControl:
     def _progreso(self, id_solicitud: int, ahora: float) -> float:
         inicio, duracion, _ = self._viajes[id_solicitud]
         return (ahora - inicio) / duracion
-
-    def _terminar_mantenimientos(self, ahora: float) -> bool:
-        listos = False
-        for robot in self._flota.robots:
-            if robot.estado is not EstadoRobot.MANTENIMIENTO:
-                self._mantenimiento_desde.pop(robot.id, None)
-            elif ahora - self._mantenimiento_desde.setdefault(robot.id, ahora) >= RECARGA_S:
-                robot.terminar_mantenimiento()
-                listos = True
-        if listos:
-            self._asignador.reintentar_pendientes()
-        return listos
 
     # --- Lo que se dibuja ----------------------------------------------------
     def estado(self) -> dict:

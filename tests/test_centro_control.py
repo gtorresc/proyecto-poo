@@ -3,12 +3,12 @@ import time
 
 import pytest
 
-from flota.asignacion.asignador import AsignadorEntregas
+from flota.asignacion.asignador import DURACION_MANTENIMIENTO_S, AsignadorEntregas
 from flota.campus import cargar_campus, cargar_geometria
 from flota.dominio.bitacora import Bitacora
 from flota.dominio.estado_robot import EstadoRobot
 from flota.dominio.solicitud import EstadoSolicitud
-from flota.gui.centro_control import (CENTRO_CAMPUS, RECARGA_S, CentroControl, a_metros,
+from flota.gui.centro_control import (CENTRO_CAMPUS, CentroControl, a_metros,
                                       punto_en_recorrido)
 from flota.servicios.calendario_simulado import CalendarioSimulado
 from flota.servicios.clima_simulado import ServicioClimaSimulado
@@ -31,7 +31,7 @@ def reloj():
 def centro(reloj):
     ubicaciones, flota = cargar_campus()
     bitacora = Bitacora()
-    asignador = AsignadorEntregas(flota, ServicioClimaSimulado(), bitacora)
+    asignador = AsignadorEntregas(flota, ServicioClimaSimulado(), bitacora, reloj=reloj)
     clima_real = ServicioClimaSimulado(viento_kmh=50)  # hace de "Open-Meteo" sin red
     centro = CentroControl(ubicaciones, flota, asignador, bitacora, cargar_geometria(),
                            clima_real=clima_real, calendario_real=CalendarioSimulado("Festivo real"),
@@ -155,12 +155,32 @@ def test_cambiar_a_los_proveedores_reales(centro):
 
 
 def test_el_mantenimiento_termina_solo(centro, reloj):
-    centro._flota.buscar("R-01").enviar_a_mantenimiento()
+    """La recarga la cronometra el asignador (una sola regla para las dos interfaces y la consola)."""
+    id_sol = centro.crear_solicitud("biblioteca", "derecho", "documento", 1)
+    centro.despachar(id_sol, "R-01")
+    centro._flota.buscar("R-01")._bateria.consumir(80)  # llega con la batería baja
+    centro.tick()
+    reloj.ahora += 600
     centro.tick()
     assert robot(centro, "R-01")["franja"] == "falla"
-    reloj.ahora += RECARGA_S
+    reloj.ahora += DURACION_MANTENIMIENTO_S
     assert centro.tick()
     assert centro._flota.buscar("R-01").estado is EstadoRobot.DISPONIBLE
+
+
+def test_auto_dos_veces_en_una_pendiente_no_rompe_el_reloj(centro, reloj):
+    """Antes la solicitud quedaba dos veces en la cola y un reintento cargaba un segundo robot."""
+    centro.configurar_clima(10, 0, True, tormenta=True)
+    id_sol = centro.crear_solicitud("cafeteria", "azotea_b11", "documento", 1)  # solo el dron llega
+    solicitud = centro._buscar_solicitud(id_sol)
+    assert not centro.despachar_auto(id_sol)[0] and not centro.despachar_auto(id_sol)[0]
+    centro.configurar_clima(10, 0, True)  # escampa: el reintento la asigna una vez
+    assert len(centro._asignador.en_curso) == 1 and not centro._asignador.pendientes
+    centro.tick()
+    reloj.ahora += 600
+    centro.tick()
+    centro.tick()
+    assert solicitud.estado is EstadoSolicitud.ENTREGADA
 
 
 def test_la_bitacora_llega_como_texto(centro):

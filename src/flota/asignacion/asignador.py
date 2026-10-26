@@ -1,6 +1,7 @@
 """Asignador: elige el robot compatible más barato y consulta el clima solo si hace falta."""
+import time
 from datetime import date
-from typing import Optional
+from typing import Callable, Optional
 
 from flota.dominio.bitacora import Bitacora, TipoEvento
 from flota.dominio.flota import Flota
@@ -8,17 +9,22 @@ from flota.dominio.solicitud import EstadoSolicitud, SolicitudEntrega
 from flota.servicios.proveedor_calendario import ProveedorCalendario
 from flota.servicios.proveedor_clima import ProveedorClima
 
+DURACION_MANTENIMIENTO_S = 30.0  # tiempo de recarga antes de volver a la flota
+
 
 class AsignadorEntregas:
 
     def __init__(self, flota: Flota, proveedor_clima: ProveedorClima, bitacora: Bitacora,
-                 calendario: Optional[ProveedorCalendario] = None):
+                 calendario: Optional[ProveedorCalendario] = None,
+                 reloj: Callable[[], float] = time.monotonic):
         self._flota = flota
         self._proveedor_clima = proveedor_clima
         self._bitacora = bitacora
         self._calendario = calendario  # sin calendario no se aplica la regla de festivos
-        self._pendientes: list[SolicitudEntrega] = []
-        self._en_curso: list[SolicitudEntrega] = []  # asignadas y aún sin entregar
+        self._reloj = reloj
+        self._pendientes: dict[int, SolicitudEntrega] = {}  # id -> solicitud, en orden de llegada
+        self._en_curso: dict[int, SolicitudEntrega] = {}    # asignadas y aún sin entregar
+        self._en_mantenimiento: dict[str, float] = {}       # id del robot -> instante en que sale
 
     @property
     def proveedor_clima(self) -> ProveedorClima:
@@ -40,18 +46,22 @@ class AsignadorEntregas:
 
     @property
     def pendientes(self) -> tuple[SolicitudEntrega, ...]:
-        return tuple(self._pendientes)
+        return tuple(self._pendientes.values())
 
     @property
     def en_curso(self) -> tuple[SolicitudEntrega, ...]:
-        return tuple(self._en_curso)
+        return tuple(self._en_curso.values())
 
     def asignar(self, solicitud: SolicitudEntrega) -> bool:
         """True si un robot quedó asignado; si no, la solicitud queda pendiente y se reintentará."""
+        if solicitud.estado is not EstadoSolicitud.PENDIENTE:  # antes de tocar ningún robot
+            raise ValueError(f"Solicitud {solicitud.id} ya está {solicitud.estado.value}")
         asignada, motivo = self._intentar(solicitud)
-        if not asignada and solicitud not in self._pendientes:
+        if asignada:
+            self._pendientes.pop(solicitud.id, None)
+        elif solicitud.id not in self._pendientes:
             solicitud.marcar_pendiente(motivo)
-            self._pendientes.append(solicitud)
+            self._pendientes[solicitud.id] = solicitud
             self._bitacora.registrar(TipoEvento.SOLICITUD_PENDIENTE,
                                      f"Solicitud {solicitud.id}: {motivo}")
         return asignada
@@ -77,8 +87,7 @@ class AsignadorEntregas:
                                      f"Solicitud {solicitud.id}: {motivo}", robot.id)
             return False, motivo
         self._asignar_a(solicitud, robot)
-        if solicitud in self._pendientes:  # el operador puede despachar una que esperaba reintento
-            self._pendientes.remove(solicitud)
+        self._pendientes.pop(solicitud.id, None)  # el operador puede despachar una que esperaba reintento
         return True, ""
 
     def completar_entrega(self, solicitud: SolicitudEntrega) -> None:
@@ -87,28 +96,42 @@ class AsignadorEntregas:
             raise ValueError(f"Solicitud {solicitud.id} no está asignada")
         robot.entregar(solicitud.destino)
         solicitud.marcar_entregada()
-        self._en_curso.remove(solicitud)
+        del self._en_curso[solicitud.id]
         self._bitacora.registrar(TipoEvento.ENTREGA_EXITOSA,
                                  f"Solicitud {solicitud.id} entregada en {solicitud.destino.nombre}",
                                  robot.id)
         if robot.necesita_mantenimiento():
             robot.enviar_a_mantenimiento()
+            self._en_mantenimiento[robot.id] = self._reloj() + DURACION_MANTENIMIENTO_S
             self._bitacora.registrar(TipoEvento.MANTENIMIENTO,
                                      "Batería bajo la reserva: enviado a recargar", robot.id)
         self.reintentar_pendientes()
 
     def reintentar_pendientes(self) -> int:
         """Devuelve cuántas pendientes lograron asignarse."""
+        self.liberar_mantenimientos()
         logradas = 0
-        for solicitud in list(self._pendientes):
+        for solicitud in list(self._pendientes.values()):
             # el rechazo por clima ya quedó en la bitácora la primera vez: no se repite en cada intento
             asignada, motivo = self._intentar(solicitud, registrar=False)
             if asignada:
-                self._pendientes.remove(solicitud)
+                del self._pendientes[solicitud.id]
                 logradas += 1
             else:
                 solicitud.marcar_pendiente(motivo)  # el motivo puede haber cambiado (clima, festivo...)
         return logradas
+
+    def liberar_mantenimientos(self) -> int:
+        """Devuelve a la flota los robots que ya cumplieron su recarga; dice cuántos salieron."""
+        ahora = self._reloj()
+        listos = [id_robot for id_robot, salida in self._en_mantenimiento.items() if salida <= ahora]
+        for id_robot in listos:
+            del self._en_mantenimiento[id_robot]
+            robot = self._flota.buscar(id_robot)
+            if robot is not None:  # pudo quitarse de la flota mientras se recargaba
+                robot.terminar_mantenimiento()
+                self._bitacora.registrar(TipoEvento.MANTENIMIENTO, "Recargado: vuelve a la flota", id_robot)
+        return len(listos)
 
     def _motivo_festivo(self, solicitud: SolicitudEntrega) -> Optional[str]:
         if solicitud.carga.requiere_cafeteria() and self._calendario is not None:
@@ -151,4 +174,4 @@ class AsignadorEntregas:
                   + robot.calcular_tiempo_min(solicitud.origen, solicitud.destino))
         robot.cargar(solicitud.carga, solicitud.origen)
         solicitud.asignar(robot, costo, tiempo)
-        self._en_curso.append(solicitud)
+        self._en_curso[solicitud.id] = solicitud

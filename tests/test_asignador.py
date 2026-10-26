@@ -1,7 +1,7 @@
 """AsignadorEntregas: robot más barato y consulta de clima."""
 import pytest
 
-from flota.asignacion.asignador import AsignadorEntregas
+from flota.asignacion.asignador import DURACION_MANTENIMIENTO_S, AsignadorEntregas
 from flota.dominio.bitacora import Bitacora, TipoEvento
 from flota.dominio.carga import Alimento, Documento
 from flota.dominio.estado_robot import EstadoRobot
@@ -179,3 +179,54 @@ def test_reintentar_no_repite_el_rechazo_por_clima_y_actualiza_el_motivo(entorno
     asignador.reintentar_pendientes()
     assert s.motivo == "ningún robot disponible puede atenderla" and s in asignador.pendientes
 
+
+def test_no_se_reasigna_una_solicitud_que_ya_no_esta_pendiente(entorno):
+    flota, _, _, asignador = entorno
+    s = SolicitudEntrega(CAFETERIA, BIBLIOTECA, Documento("Tesis", 1))
+    assert asignador.asignar(s)
+    with pytest.raises(ValueError):
+        asignador.asignar(s)
+    # el error llega antes de tocar otro robot: solo el asignado va en ruta
+    assert [r.id for r in flota.robots if r.estado is EstadoRobot.EN_RUTA] == ["R-01"]
+
+
+def test_una_pendiente_asignada_a_mano_sale_de_la_cola(entorno):
+    flota, _, clima, asignador = entorno
+    clima.configurar(viento=45, rafagas=50, lluvia=10, dia=True)
+    s = SolicitudEntrega(CAFETERIA, AZOTEA, Documento("Tesis", 1))
+    assert not asignador.asignar(s)
+    clima.configurar(viento=10, rafagas=15, lluvia=10, dia=True)
+    assert asignador.asignar(s) and asignador.pendientes == ()
+    asignador.completar_entrega(s)  # antes, el reintento interno volvía a cargar un robot y fallaba
+    assert all(r.estado is EstadoRobot.DISPONIBLE for r in flota.robots)
+
+
+def test_el_robot_vuelve_de_mantenimiento_al_terminar_la_recarga():
+    ahora = [0.0]
+    flota, bitacora = Flota(), Bitacora()
+    flota.agregar(RobotRuedas("R-02", CAFETERIA, nivel_bateria=17))
+    asignador = AsignadorEntregas(flota, ServicioClimaSimulado(), bitacora, reloj=lambda: ahora[0])
+    s = SolicitudEntrega(CAFETERIA, BIBLIOTECA, Documento("Tesis", 1))
+    asignador.asignar(s)
+    asignador.completar_entrega(s)
+    robot = flota.buscar("R-02")
+    assert robot.estado is EstadoRobot.MANTENIMIENTO
+    ahora[0] = DURACION_MANTENIMIENTO_S - 1
+    assert asignador.liberar_mantenimientos() == 0 and robot.estado is EstadoRobot.MANTENIMIENTO
+    ahora[0] = DURACION_MANTENIMIENTO_S
+    assert asignador.liberar_mantenimientos() == 1 and robot.estado is EstadoRobot.DISPONIBLE
+    assert len(bitacora.filtrar(TipoEvento.MANTENIMIENTO)) == 2
+
+
+def test_una_pendiente_espera_a_que_el_robot_salga_de_mantenimiento():
+    ahora = [0.0]
+    flota = Flota()
+    flota.agregar(RobotRuedas("R-02", CAFETERIA, nivel_bateria=17))
+    asignador = AsignadorEntregas(flota, ServicioClimaSimulado(), Bitacora(), reloj=lambda: ahora[0])
+    primera = SolicitudEntrega(CAFETERIA, BIBLIOTECA, Documento("Tesis", 1))
+    segunda = SolicitudEntrega(BIBLIOTECA, CAFETERIA, Documento("Apuntes", 1))
+    assert asignador.asignar(primera) and not asignador.asignar(segunda)
+    asignador.completar_entrega(primera)  # R-02 entra a mantenimiento: la segunda sigue pendiente
+    assert segunda.estado is EstadoSolicitud.PENDIENTE
+    ahora[0] = DURACION_MANTENIMIENTO_S
+    assert asignador.reintentar_pendientes() == 1 and segunda.robot.id == "R-02"
