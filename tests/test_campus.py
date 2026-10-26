@@ -10,6 +10,7 @@ import pytest
 from flota.campus import cargar_campus, cargar_geometria, crear_red_senderos
 from flota.dominio.estado_robot import EstadoRobot
 from flota.dominio.ubicacion import Ubicacion, Zona
+from flota.gui.centro_control import dentro
 
 RAIZ = Path(__file__).resolve().parent.parent
 
@@ -30,15 +31,6 @@ def test_la_demo_corre_completa():
     assert "rechazo por clima: 2" in r.stdout and "entrega exitosa: 5" in r.stdout
 
 
-def _dentro(lat: float, lon: float, poligono: list) -> bool:
-    """Punto en polígono por cruce de rayos (basta en un campus de 600 m)."""
-    dentro = False
-    for (y1, x1), (y2, x2) in zip(poligono, poligono[1:] + poligono[:1]):
-        if (y1 > lat) != (y2 > lat) and lon < (x2 - x1) * (lat - y1) / (y2 - y1) + x1:
-            dentro = not dentro
-    return dentro
-
-
 def test_la_geometria_trae_perimetro_edificios_caminos_y_atribucion():
     geo = cargar_geometria()
     assert "OpenStreetMap" in geo["fuente"]
@@ -52,10 +44,10 @@ def test_cada_punto_de_entrega_queda_sobre_un_edificio_o_dentro_del_campus():
     geo = cargar_geometria()
     sitio, _ = cargar_campus()
     for clave, u in sitio.items():
-        assert _dentro(u.latitud, u.longitud, geo["perimetro"]), f"{clave} está fuera del campus"
+        assert dentro((u.latitud, u.longitud), geo["perimetro"]), f"{clave} está fuera del campus"
         if u.zona is Zona.ZONA_VERDE:
             continue  # canchas y huertas no son edificios
-        cerca = any(_dentro(u.latitud, u.longitud, e["contorno"])
+        cerca = any(dentro((u.latitud, u.longitud), e["contorno"])
                     or min(u.distancia_km(Ubicacion("v", la, lo, Zona.EDIFICIO))
                            for la, lo in e["contorno"]) <= 0.02
                     for e in geo["edificios"])

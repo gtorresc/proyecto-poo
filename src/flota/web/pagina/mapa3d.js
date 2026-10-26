@@ -4,10 +4,9 @@
 // balizas se dibujan encima en un canvas 2D, con las mismas funciones que el mapa de respaldo.
 import * as THREE from "three";
 import { OrbitControls } from "./vendor/OrbitControls.js";
-import { PALETA, RESALTADO, FRANJA, dibujarBaliza, dibujarRobot } from "./mapa2d.js";
+import { CALLES, PALETA, RESALTADO, FRANJA, dibujarBaliza, dibujarRobot } from "./mapa2d.js";
 import { ALTURA_NUBES_M, NEBLINA, difuminarBordes, dibujarEncima, dibujarLuces, posicionNube, spriteNube } from "./clima.js";
 
-const CALLES = new Set(["residential", "tertiary", "unclassified", "living_street"]);
 const POLAR_3D = 0.95, POLAR_2D = 0.0001;  // ángulo desde la vertical
 const ZOOM_MIN = 1, ZOOM_MAX = 4, RADIO_CLIC = 18, ESPERA_ANILLO_S = 90, TRANSICION_MS = 600;
 const ZOOM_MIN_REAL = 1.6, PANEO_REAL = 0.6;  // en las vistas realistas: no alejarse ni salirse del mosaico
@@ -164,12 +163,12 @@ export class Mapa3D {
 
   _aplicarPaleta(p) {
     const m = this.materiales, noche = p === PALETA.noche;
-    this.escena.background = new THREE.Color(this.vista === "despacho" ? p.fondo : NEBLINA[this.vista][noche ? 1 : 0]);
+    this.escena.background = new THREE.Color(this.vista === "despacho" ? p.fondo_mapa : NEBLINA[this.vista][noche ? 1 : 0]);
     this.luzCielo.intensity = noche ? 0.25 : 1.1;  // de noche la foto se oscurece y se ven las luces
     this.sol.intensity = noche ? 0.15 : 1.7;
     m.campus.color.set(p.campus); m.techo.color.set(p.edificio); m.pared.color.set(p.pared);
-    m.techoCiudad.color.set(p.ciudad); m.paredCiudad.color.set(p.paredCiudad);
-    m.arista.color.set(p.arista); m.aristaCiudad.color.set(p.aristaCiudad);
+    m.techoCiudad.color.set(p.ciudad); m.paredCiudad.color.set(p.pared_ciudad);
+    m.arista.color.set(p.arista); m.aristaCiudad.color.set(p.arista_ciudad);
     m.sendero.color.set(p.sendero); m.calle.color.set(p.calle);
   }
 

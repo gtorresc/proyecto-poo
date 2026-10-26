@@ -9,6 +9,7 @@ import threading
 
 from flota.gui.mosaico import CAPAS, mosaico
 from flota.gui.retratos import retrato
+from flota.gui import tema
 from flota.gui.tema import RECURSOS
 
 
@@ -29,7 +30,10 @@ class PuenteWeb:
 
     # --- Lecturas ----------------------------------------------------------
     def geometria(self) -> dict:
-        return self._centro.geometria()
+        """La geometría del campus y los colores de gui/tema.py: la web no tiene su propia copia."""
+        return {**self._centro.geometria(), "tema": {
+            "dia": tema.DIA, "noche": tema.NOCHE, "franja": tema.FRANJA,
+            "resaltado": tema.RESALTADO, "neblina": tema.NEBLINA}}
 
     def estado(self) -> dict:
         """La página lo pide cada 50 ms: también avanza la simulación."""

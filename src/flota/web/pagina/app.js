@@ -1,6 +1,6 @@
 // UdeM·DESPACHO, versión web. Solo presentación: todo lo que hace pasa por window.pywebview.api,
 // que es PuenteWeb (Python) sobre CentroControl. Las reglas de negocio no están aquí.
-import { Mapa2D, FRANJA } from "./mapa2d.js";
+import { Mapa2D, FRANJA, cargarTema } from "./mapa2d.js";
 
 const $ = id => document.getElementById(id);
 const ETIQUETA = { libre: "DISPONIBLE", ocupado: "EN RUTA", falla: "MANTENIMIENTO" };
@@ -25,6 +25,7 @@ async function iniciar() {
     document.fonts.add(await new FontFace(nombre, bytes).load());
   }
   const geo = await api.geometria();
+  cargarTema(geo.tema);
   llenarFormulario(geo);
   mapa = await crearMapa(geo);
   conectarControles();

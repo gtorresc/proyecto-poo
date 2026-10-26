@@ -19,7 +19,6 @@ RESALTADO = {"edificio": "#f08a2c", "pared": "#c46a1c", "arista": "#ffd2a1"}  # 
 NEBLINA = {"satelite": ("#56635c", "#05080f"), "calles": ("#dcd8d0", "#0b0f16")}
 BISEL = "#1b2b2e"
 PANEL = "#132326"
-TEXTO = "#c9e6e2"
 TEXTO_BARRA = "#9fbfbd"
 ALERTA = "#f08a2c"   # lo que exige acción: balizas, edificios resaltados
 OCUPADO = "#1f6fd1"

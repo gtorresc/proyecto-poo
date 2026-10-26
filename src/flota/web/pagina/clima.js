@@ -99,7 +99,7 @@ export function difuminarBordes(imagen, fraccion = 0.18) {
   return c;
 }
 
-export const NEBLINA = { satelite: ["#56635c", "#05080f"], calles: ["#dcd8d0", "#0b0f16"] };
+export const NEBLINA = {};  // lo llena cargarTema() con los colores de gui/tema.py
 
 export function puntoEnPoligono(x, y, poligono) {
   let dentro = false;

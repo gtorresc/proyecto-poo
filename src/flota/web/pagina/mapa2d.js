@@ -2,15 +2,14 @@
 // Es el respaldo de la vista 3D: solo usa Canvas 2D, que funciona en cualquier navegador.
 import { NEBLINA, difuminarBordes, dibujarEncima, dibujarLuces, puntoEnPoligono } from "./clima.js";
 
-export const PALETA = {
-  dia: { fondo: "#1d7f7b", campus: "#23918b", edificio: "#2bb3a3", pared: "#1f8f84", arista: "#b9fff2",
-         sendero: "#5fd3c3", calle: "#176a66", ciudad: "#227f78", paredCiudad: "#1b6f69", aristaCiudad: "#6fd6c8" },
-  noche: { fondo: "#0c1a1c", campus: "#0f2225", edificio: "#10302c", pared: "#0b2420", arista: "#46f0b4",
-           sendero: "#1f5a4c", calle: "#14302e", ciudad: "#0f2624", paredCiudad: "#0b1d1c", aristaCiudad: "#1f6a58" },
-};
-export const RESALTADO = { edificio: "#f08a2c", pared: "#c46a1c", arista: "#ffd2a1" };
-export const FRANJA = { libre: "#3f9a6b", ocupado: "#1f6fd1", falla: "#d2453b" };
-const CALLES = new Set(["residential", "tertiary", "unclassified", "living_street"]);
+// Los colores salen de gui/tema.py (llegan con la geometría): las dos interfaces usan los mismos
+export const PALETA = { dia: {}, noche: {} }, RESALTADO = {}, FRANJA = {};
+export const CALLES = new Set(["residential", "tertiary", "unclassified", "living_street"]);
+
+export function cargarTema(tema) {  // antes de crear el mapa
+  Object.assign(PALETA.dia, tema.dia); Object.assign(PALETA.noche, tema.noche);
+  Object.assign(RESALTADO, tema.resaltado); Object.assign(FRANJA, tema.franja); Object.assign(NEBLINA, tema.neblina);
+}
 const ZOOM_MIN = 1, ZOOM_MAX = 4, RADIO_CLIC = 18, ESPERA_ANILLO_S = 90;
 
 export class Mapa2D {
@@ -98,7 +97,7 @@ export class Mapa2D {
     if (!this.ancho) return;
     const c = this.fondo.getContext("2d"), p = this.paleta;
     const camino = puntos => { c.beginPath(); puntos.forEach(([x, y], i) => c[i ? "lineTo" : "moveTo"](...this.proyectar(x, y))); };
-    c.fillStyle = p.fondo; c.fillRect(0, 0, this.ancho, this.alto);
+    c.fillStyle = p.fondo_mapa; c.fillRect(0, 0, this.ancho, this.alto);
     if (this.foto) return this._dibujarFoto(c);
     camino(this.geo.perimetro); c.closePath(); c.fillStyle = p.campus; c.fill(); c.strokeStyle = p.sendero; c.lineWidth = 2; c.stroke();
     c.lineCap = "round";
@@ -111,7 +110,7 @@ export class Mapa2D {
       camino(e.contorno); c.closePath();
       const naranja = resaltados.has(i);
       c.fillStyle = naranja ? RESALTADO.edificio : e.en_campus ? p.edificio : p.ciudad; c.fill();
-      c.strokeStyle = naranja ? RESALTADO.arista : e.en_campus ? p.arista : p.aristaCiudad;
+      c.strokeStyle = naranja ? RESALTADO.arista : e.en_campus ? p.arista : p.arista_ciudad;
       c.lineWidth = e.en_campus ? 1.5 : 1; c.stroke();
     });
   }

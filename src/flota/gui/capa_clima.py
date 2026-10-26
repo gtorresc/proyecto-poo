@@ -2,7 +2,6 @@
 
 Lee estado()["ambiente"] y la geometría de CentroControl; no decide nada del dominio.
 """
-import math
 import random
 
 from PIL import Image, ImageDraw, ImageFilter, ImageTk

@@ -82,3 +82,12 @@ def test_el_mosaico_viaja_como_data_url_o_como_error(puente, monkeypatch):
     monkeypatch.setattr(modulo, "mosaico", lambda capa: None)  # sin red
     assert puente.mosaico("calles") == {"error": "vista realista sin conexión"}
     assert "error" in puente.mosaico("google")
+
+
+def test_la_web_recibe_la_paleta_de_python(puente):
+    from flota.gui import tema
+    t = puente.geometria()["tema"]
+    assert t["dia"] == tema.DIA and t["noche"] == tema.NOCHE and t["franja"] == tema.FRANJA
+    assert t["neblina"]["satelite"] == tema.NEBLINA["satelite"]
+    pagina = (PAGINA.parent / "mapa2d.js").read_text(encoding="utf-8")
+    assert "#1d7f7b" not in pagina  # el JS ya no tiene su propia copia de los colores
