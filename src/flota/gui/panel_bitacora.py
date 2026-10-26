@@ -49,5 +49,4 @@ class PanelBitacora(ctk.CTkFrame):
             with open(ruta, "w", encoding="utf-8") as archivo:
                 archivo.write(self._centro.exportar_bitacora())
         except OSError as error:  # carpeta sin permiso, archivo abierto en otro programa...
-            messagebox.showerror("Exportar bitácora", f"No se pudo guardar el reporte:
-{error}")
+            messagebox.showerror("Exportar bitácora", f"No se pudo guardar el reporte:\n{error}")
