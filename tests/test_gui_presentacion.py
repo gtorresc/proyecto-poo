@@ -5,7 +5,7 @@ import requests
 from flota.gui import retratos
 from flota.gui.capa_clima import MARGEN_NUBES_M, gotas, posicion_nube, sprite_nube
 from flota.gui.panel_clima import rumbo, texto_clima
-from flota.gui.panel_mapa import ZOOM_MAX, Camara, caras_visibles
+from flota.gui.panel_mapa import ZOOM_MAX, Camara, caras_visibles, edificio_bajo
 from flota.gui.plantilla import EJES, puntos_radar
 
 
@@ -126,3 +126,27 @@ def test_la_nube_es_transparente_en_los_bordes():
     img = sprite_nube(semilla=1, ancho_px=200, alto_px=120, opacidad=0.6)
     assert img.size == (200, 120)
     assert img.getpixel((0, 0))[3] == 0 and img.getpixel((100, 60))[3] > 0
+
+
+# --- Vistas realistas -----------------------------------------------------------------
+@pytest.mark.parametrize("modo, giros", [("2D", 0), ("3D", 0), ("3D", 1), ("2D", 3)])
+def test_la_foto_queda_alineada_con_el_suelo(camara, modo, giros):
+    if modo == "2D":
+        camara.alternar()
+    for _ in range(giros):
+        camara.girar()
+    caja, tamano = [-300, -200, 300, 200], (1200, 800)  # 2 píxeles por metro
+    a, b, c, d, e, f = camara.afin_suelo(caja, tamano)
+    for x, y in [(0, 0), (120, -80), (-250, 150)]:
+        sx, sy = camara.proyectar(x, y)
+        u, v = a * sx + b * sy + c, d * sx + e * sy + f  # lo que hace Image.transform con cada píxel
+        assert (u, v) == pytest.approx(((x + 300) * 2, (200 - y) * 2))
+
+
+def test_el_edificio_bajo_el_cursor_es_el_mas_cercano(camara):
+    cerca = {"contorno": [[-20, -60], [20, -60], [20, -40], [-20, -40]], "altura": 10, "nombre": "Cerca"}
+    lejos = {"contorno": [[-20, 40], [20, 40], [20, 60], [-20, 60]], "altura": 80, "nombre": "Lejos"}
+    camara.alternar()  # en 2D cada uno se ve en su lugar
+    assert edificio_bajo(camara, [lejos, cerca], *camara.proyectar(0, -50)) == 1
+    assert edificio_bajo(camara, [lejos, cerca], *camara.proyectar(0, 50)) == 0
+    assert edificio_bajo(camara, [lejos, cerca], *camara.proyectar(200, 0)) is None

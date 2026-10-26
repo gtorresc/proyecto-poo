@@ -1,16 +1,20 @@
-"""Mapa vectorial del campus en 2D (cenital) o 3D (oblicua), sin tiles ni internet.
+"""Mapa del campus en 2D (cenital) o 3D (oblicua), en tres vistas: DESPACHO, CALLES y SATÉLITE.
 
-Dibuja la geometría de OSM que entrega CentroControl y lo que dice estado(): robots, rutas y balizas.
+DESPACHO se dibuja con la geometría de OSM, sin internet. CALLES y SATÉLITE ponen debajo un mosaico
+de imágenes reales (gui/mosaico.py). Encima va lo que dice estado(): robots, rutas y balizas.
 No decide nada: un clic en una baliza o un robot solo avisa a la ventana.
 """
 import math
+import threading
 import time
 
 import customtkinter as ctk
-from PIL import Image, ImageDraw, ImageTk
+from PIL import Image, ImageDraw, ImageEnhance, ImageTk
 
 from flota.gui import tema
 from flota.gui.capa_clima import CapaClima
+from flota.gui.centro_control import dentro
+from flota.gui.mosaico import CAPAS, color_techo, mosaico
 from flota.gui.retratos import CARPETA
 
 INTERVALO_MS = 50
@@ -21,6 +25,10 @@ RADIO_CLIC = 18
 ESPERA_ANILLO_S = 90  # el anillo de la baliza se vacía en este tiempo
 CALLES = {"residential", "tertiary", "unclassified", "living_street"}
 RESALTADO = (tema.RESALTADO["edificio"], tema.RESALTADO["pared"], tema.RESALTADO["arista"])
+VISTAS = ["despacho", "calles", "satelite"]
+NOMBRE_VISTA = {"despacho": "DESPACHO", "calles": "CALLES", "satelite": "SATÉLITE"}
+EDIFICIO_CALLES = ("#ece9e4", "#d3cdc4", "#b3ab9f")  # techo, pared y arista, como los edificios 3D de un mapa
+AVISO_S = 4
 
 
 class Camara:
@@ -76,6 +84,21 @@ class Camara:
     def alternar(self) -> None:
         self.modo = "2D" if self.modo == "3D" else "3D"
 
+    def afin_suelo(self, caja: list[float], tamano: tuple[int, int]) -> tuple:
+        """Coeficientes de Image.transform(AFFINE): de cada píxel de pantalla al píxel del mosaico.
+
+        El suelo (z = 0) se proyecta con una transformación afín, así que la foto se puede deformar
+        a la vista 2D, a la 3D o girada sin perder la alineación con los edificios."""
+        x0, y0, x1, y1 = caja
+
+        def pantalla(u, v):
+            return self.proyectar(x0 + u * (x1 - x0) / tamano[0], y1 - v * (y1 - y0) / tamano[1])
+        s0, su, sv = pantalla(0, 0), pantalla(1, 0), pantalla(0, 1)
+        ux, uy, vx, vy = su[0] - s0[0], su[1] - s0[1], sv[0] - s0[0], sv[1] - s0[1]
+        det = ux * vy - vx * uy
+        a, b, d, e = vy / det, -vx / det, -uy / det, ux / det
+        return a, b, -(a * s0[0] + b * s0[1]), d, e, -(d * s0[0] + e * s0[1])
+
 
 def caras_visibles(contorno: list, rotado: list) -> list[tuple]:
     """Paredes que miran a la cámara (normal exterior hacia abajo en pantalla), de la más lejana a la más cercana."""
@@ -86,6 +109,21 @@ def caras_visibles(contorno: list, rotado: list) -> list[tuple]:
         if normal_y < 0:
             caras.append(((ra[1] + rb[1]) / 2, a, b))
     return [(a, b) for _, a, b in sorted(caras, reverse=True)]
+
+
+def edificio_bajo(camara: Camara, edificios: list[dict], sx: float, sy: float):
+    """Índice del edificio cuyo techo está bajo el punto de pantalla; el más cercano a la cámara gana."""
+    for i in sorted(range(len(edificios)), key=lambda i: camara.profundidad(*edificios[i]["contorno"][0])):
+        z = edificios[i]["altura"] if camara.modo == "3D" else 0
+        techo = [camara.proyectar(x, y, z)[::-1] for x, y in edificios[i]["contorno"]]  # dentro() usa (y, x)
+        if dentro((sy, sx), techo):
+            return i
+    return None
+
+
+def oscurecer(color: str, factor: float) -> str:
+    r, g, b = (int(color[i:i + 2], 16) for i in (1, 3, 5))
+    return "#" + "".join(f"{int(v * factor):02x}" for v in (r, g, b))
 
 
 def _retrato_redondo(id_robot: str, color: str):
@@ -114,6 +152,11 @@ class PanelMapa(ctk.CTkFrame):
         self._paleta, self._resaltados = tema.DIA, frozenset()
         self._retratos, self._en_pantalla = {}, {"balizas": [], "robots": []}
         self._arrastre, self._lineas = None, None
+        self.vista = "despacho"         # la que pidió el operador
+        self._mosaicos = {}             # capa -> (imagen, caja, colores de techo), o None si no se pudo bajar
+        self._aviso = None              # (texto, hasta) en la esquina del mapa
+        self._foto_suelo = None
+        self._vista_dibujada = None
         self.canvas = ctk.CTkCanvas(self, bg=tema.DIA["fondo_mapa"], highlightthickness=0)
         self.canvas.pack(fill="both", expand=True, padx=2, pady=2)
         self._botones()
@@ -130,7 +173,8 @@ class PanelMapa(ctk.CTkFrame):
     def _botones(self) -> None:
         columna = ctk.CTkFrame(self, fg_color="transparent")
         columna.place(relx=1, rely=1, x=-12, y=-12, anchor="se")
-        for texto, accion in [("[TAB] 2D/3D", self.alternar), ("[R] GIRAR", self.girar),
+        for texto, accion in [("[V] VISTA", self.cambiar_vista), ("[TAB] 2D/3D", self.alternar),
+                              ("[R] GIRAR", self.girar),
                               ("+", lambda: self._camara(self.camara.acercar, 1.4)),
                               ("-", lambda: self._camara(self.camara.acercar, 1 / 1.4))]:
             ctk.CTkButton(columna, text=texto, width=110, height=26, font=tema.fuente(12),
@@ -142,6 +186,31 @@ class PanelMapa(ctk.CTkFrame):
 
     def girar(self) -> None:
         self._camara(self.camara.girar)
+
+    # --- Vistas -----------------------------------------------------------------
+    def cambiar_vista(self) -> None:
+        """DESPACHO, CALLES y SATÉLITE en ronda. El mosaico se baja en un hilo la primera vez."""
+        self.vista = VISTAS[(VISTAS.index(self.vista) + 1) % len(VISTAS)]
+        if self.vista != "despacho" and self.vista not in self._mosaicos:
+            self._avisar("cargando mapa...")
+            threading.Thread(target=self._bajar_mosaico, args=(self.vista,), daemon=True).start()
+        else:
+            self._avisar(f"vista {NOMBRE_VISTA[self.vista]}")
+        self._dibujar_fondo()
+
+    def _bajar_mosaico(self, capa: str) -> None:
+        resultado = mosaico(capa)
+        if resultado is not None:
+            colores = [color_techo(*resultado, e["contorno"]) for e in self._geo["edificios"]]
+            resultado = (*resultado, colores)
+        self._mosaicos[capa] = resultado  # el ciclo de la ventana lo nota y redibuja
+
+    def _vista_activa(self) -> str:
+        """Hasta que el mosaico esté listo (o si no se pudo bajar) se ve DESPACHO."""
+        return self.vista if self._mosaicos.get(self.vista) else "despacho"
+
+    def _avisar(self, texto: str) -> None:
+        self._aviso = (texto, time.monotonic() + AVISO_S)
 
     def _camara(self, accion, *args) -> None:
         accion(*args)
@@ -174,6 +243,11 @@ class PanelMapa(ctk.CTkFrame):
     def _dibujar_fondo(self) -> None:
         c, cam, p = self.canvas, self.camara, self._paleta
         c.delete("fondo")
+        vista = self._vista_activa()
+        if vista != "despacho":
+            self._dibujar_fondo_real(vista)
+            c.tag_lower("fondo")
+            return
         c.configure(bg=p["fondo_mapa"])
         plano = lambda puntos: [v for x, y in puntos for v in cam.proyectar(x, y)]
         c.create_polygon(plano(self._geo["perimetro"]), fill=p["campus"], outline=p["sendero"], width=2,
@@ -183,45 +257,81 @@ class PanelMapa(ctk.CTkFrame):
             c.create_line(plano(camino["puntos"]), fill=p["calle"] if calle else p["sendero"],
                           width=max(1, cam.escala * (6 if calle else 1.6)), capstyle="round", tags="fondo")
         edificios = self._geo["edificios"]
-        for i in sorted(range(len(edificios)), reverse=True, key=lambda i: cam.profundidad(*edificios[i]["contorno"][0])):
-            self._dibujar_edificio(edificios[i], i in self._resaltados, f"edificio{i}")
-        c.create_text(cam.ancho - 8, 8, text=self._geo["fuente"].split(",")[0], anchor="ne",
-                      fill=p["arista"], font=(tema.MONO, 9), tags="fondo")
+        for i in self._orden_edificios():
+            e = edificios[i]
+            colores = (RESALTADO if i in self._resaltados else
+                       (p["edificio"], p["pared"], p["arista"]) if e["en_campus"]
+                       else (p["ciudad"], p["pared_ciudad"], p["arista_ciudad"]))
+            self._dibujar_edificio(e, colores, 1.5 if e["en_campus"] else 1)
+        self._credito(self._geo["fuente"].split(",")[0], p["arista"])
         c.tag_lower("fondo")
 
-    def _dibujar_edificio(self, edificio: dict, resaltado: bool, etiqueta: str) -> None:
-        c, cam, p = self.canvas, self.camara, self._paleta
-        techo, pared, arista = (RESALTADO if resaltado else
-                                (p["edificio"], p["pared"], p["arista"]) if edificio["en_campus"]
-                                else (p["ciudad"], p["pared_ciudad"], p["arista_ciudad"]))
+    def _orden_edificios(self) -> list[int]:
+        edificios, cam = self._geo["edificios"], self.camara
+        return sorted(range(len(edificios)), reverse=True,
+                      key=lambda i: cam.profundidad(*edificios[i]["contorno"][0]))
+
+    def _credito(self, texto: str, color: str) -> None:
+        self.canvas.create_text(self.camara.ancho - 8, 8, text=texto, anchor="ne", fill=color,
+                                font=(tema.MONO, 9), tags="fondo")
+
+    def _dibujar_fondo_real(self, vista: str) -> None:
+        """La foto (o el mapa de calles) deformada a la cámara y, en 3D, los edificios con su color real."""
+        c, cam = self.canvas, self.camara
+        imagen, caja, colores = self._mosaicos[vista]
+        noche = self._paleta is tema.NOCHE
+        c.configure(bg=tema.BISEL)
+        suelo = imagen.transform((max(1, cam.ancho), max(1, cam.alto)), Image.AFFINE,
+                                 cam.afin_suelo(caja, imagen.size), resample=Image.BILINEAR, fillcolor=tema.BISEL)
+        if noche:  # de noche la foto se oscurece y se enfría, para que se vean las luces
+            suelo = Image.blend(ImageEnhance.Brightness(suelo).enhance(0.4),
+                                Image.new("RGB", suelo.size, "#0b1a33"), 0.25)
+        self._foto_suelo = ImageTk.PhotoImage(suelo)
+        c.create_image(0, 0, image=self._foto_suelo, anchor="nw", tags="fondo")
+        edificios = self._geo["edificios"]
+        for i in self._orden_edificios():
+            if cam.modo == "2D":
+                if i in self._resaltados:  # en 2D la imagen ya muestra los edificios: solo el contorno naranja
+                    c.create_polygon([v for x, y in edificios[i]["contorno"] for v in cam.proyectar(x, y)],
+                                     fill="", outline=tema.ALERTA, width=3, tags="fondo")
+                continue
+            if i in self._resaltados:
+                tono = RESALTADO
+            else:
+                tono = ((colores[i], oscurecer(colores[i], 0.72), oscurecer(colores[i], 0.5)) if vista == "satelite"
+                        else EDIFICIO_CALLES)
+                if noche:
+                    tono = tuple(oscurecer(t, 0.45) for t in tono)
+            self._dibujar_edificio(edificios[i], tono, 1)
+        self._credito(CAPAS[vista]["credito"], "#f3efe4")
+
+    def _dibujar_edificio(self, edificio: dict, colores: tuple, grosor: float) -> None:
+        c, cam = self.canvas, self.camara
+        techo, pared, arista = colores
         contorno, alto = edificio["contorno"], edificio["altura"] if cam.modo == "3D" else 0
         if alto:
             for a, b in caras_visibles(contorno, [cam.rotar(x, y) for x, y in contorno]):
                 c.create_polygon(*cam.proyectar(*a), *cam.proyectar(*b), *cam.proyectar(*b, alto),
-                                 *cam.proyectar(*a, alto), fill=pared, outline=arista, tags=("fondo", etiqueta))
+                                 *cam.proyectar(*a, alto), fill=pared, outline=arista, tags="fondo")
         c.create_polygon([v for x, y in contorno for v in cam.proyectar(x, y, alto)], fill=techo, outline=arista,
-                         width=1.5 if edificio["en_campus"] else 1, tags=("fondo", etiqueta))
+                         width=grosor, tags="fondo")
 
     def _sobre(self, e) -> None:
         """Al pasar el mouse por un edificio con nombre, lo muestra en una etiqueta junto al cursor."""
         c = self.canvas
         c.delete("etiqueta")
-        for item in reversed(c.find_overlapping(e.x, e.y, e.x, e.y)):  # el de más arriba primero
-            nombre = next((self._geo["edificios"][int(t[8:])]["nombre"] for t in c.gettags(item)
-                           if t.startswith("edificio")), None)
-            if nombre:
-                texto = c.create_text(e.x + 14, e.y - 16, text=nombre, anchor="sw", fill="#f3efe4",
-                                      font=(tema.MONO, 11), tags="etiqueta")
-                x0, y0, x1, y1 = c.bbox(texto)
-                if x1 + 8 > self.camara.ancho:  # no se sale por la derecha: va al otro lado del cursor
-                    c.move(texto, -(x1 - x0) - 28, 0)
-                    x0, y0, x1, y1 = c.bbox(texto)
-                c.create_rectangle(x0 - 6, y0 - 3, x1 + 6, y1 + 3, fill="#0c1a1c", outline=tema.ALERTA,
-                                   tags="etiqueta")
-                c.tag_raise(texto)
-                return
-            if any(t.startswith("edificio") for t in c.gettags(item)):
-                return  # edificio sin nombre en OSM: nada que mostrar
+        i = edificio_bajo(self.camara, self._geo["edificios"], e.x, e.y)
+        nombre = self._geo["edificios"][i]["nombre"] if i is not None else None
+        if not nombre:  # fuera de los edificios, o un edificio sin nombre en OSM
+            return
+        texto = c.create_text(e.x + 14, e.y - 16, text=nombre, anchor="sw", fill="#f3efe4",
+                              font=(tema.MONO, 11), tags="etiqueta")
+        x0, y0, x1, y1 = c.bbox(texto)
+        if x1 + 8 > self.camara.ancho:  # no se sale por la derecha: va al otro lado del cursor
+            c.move(texto, -(x1 - x0) - 28, 0)
+            x0, y0, x1, y1 = c.bbox(texto)
+        c.create_rectangle(x0 - 6, y0 - 3, x1 + 6, y1 + 3, fill="#0c1a1c", outline=tema.ALERTA, tags="etiqueta")
+        c.tag_raise(texto)
 
     @staticmethod
     def _scanlines(ancho: int, alto: int):
@@ -239,8 +349,13 @@ class PanelMapa(ctk.CTkFrame):
         estado = self._centro.estado()
         paleta = tema.NOCHE if estado["clima"].get("es_de_dia") is False else tema.DIA
         resaltados = frozenset(b["edificio"] for b in estado["balizas"] if b["edificio"] is not None)
-        if paleta is not self._paleta or resaltados != self._resaltados:
-            self._paleta, self._resaltados = paleta, resaltados
+        if self.vista in self._mosaicos and self._mosaicos[self.vista] is None:
+            del self._mosaicos[self.vista]  # se reintenta la próxima vez que se pida
+            self.vista = "despacho"
+            self._avisar("vista realista sin conexion: se usa DESPACHO")
+        vista = self._vista_activa()
+        if paleta is not self._paleta or resaltados != self._resaltados or vista != self._vista_dibujada:
+            self._paleta, self._resaltados, self._vista_dibujada = paleta, resaltados, vista
             self._dibujar_fondo()
         self._dibujar_vivo(estado)
         self.after(INTERVALO_MS, self._ciclo)
@@ -274,6 +389,9 @@ class PanelMapa(ctk.CTkFrame):
             self._dibujar_robot(r, sx, sy)
             self._en_pantalla["robots"].append((r["id"], (sx, sy)))
         self._clima.encima(estado["ambiente"], cam, time.monotonic())
+        if self._aviso and time.monotonic() < self._aviso[1]:
+            c.create_text(12, 12, text=self._aviso[0].upper(), anchor="nw", fill=tema.ALERTA,
+                          font=(tema.TITULO, 13), tags="vivo")
         if self._lineas:
             c.create_image(0, 0, image=self._lineas, anchor="nw", tags="vivo")
         c.tag_raise("etiqueta")

@@ -52,6 +52,7 @@ class App(ctk.CTk):
         self.bind("<Escape>", lambda _: (self._cerrar_llamada(), self._elegir(None)))
         self.bind("<Tab>", lambda _: (self.panel_mapa.alternar(), "break")[1])
         self.bind("<KeyPress-r>", lambda _: self._atajo(self.panel_mapa.girar))
+        self.bind("<KeyPress-v>", lambda _: self._atajo(self.panel_mapa.cambiar_vista))
         self.bind("<KeyPress-a>", lambda _: self._atajo(lambda: self._auto(self.ficha_llamada.id)))
         self._ciclo()
 
