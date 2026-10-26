@@ -69,3 +69,16 @@ def test_three_js_va_dentro_del_proyecto_y_no_depende_de_internet():
     mapa3d = (PAGINA.parent / "mapa3d.js").read_text(encoding="utf-8")
     assert "http" not in mapa3d.split("\n", 1)[1]  # ningún recurso remoto
     assert 'import("./mapa3d.js")' in (PAGINA.parent / "app.js").read_text(encoding="utf-8")  # con respaldo 2D
+
+
+def test_el_mosaico_viaja_como_data_url_o_como_error(puente, monkeypatch):
+    from PIL import Image
+
+    from flota.web import puente as modulo
+    monkeypatch.setattr(modulo, "mosaico", lambda capa: (Image.new("RGB", (8, 8), "green"), [-1, -1, 1, 1]))
+    datos = puente.mosaico("satelite")
+    assert datos["imagen"].startswith("data:image/jpeg;base64,") and datos["caja"] == [-1, -1, 1, 1]
+    assert "Esri" in datos["credito"]
+    monkeypatch.setattr(modulo, "mosaico", lambda capa: None)  # sin red
+    assert puente.mosaico("calles") == {"error": "vista realista sin conexión"}
+    assert "error" in puente.mosaico("google")

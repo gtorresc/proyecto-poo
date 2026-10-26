@@ -10,6 +10,9 @@ const COLOR_EVENTO = { ENTREGA_EXITOSA: "#46f0b4", ENTREGA_FALLIDA: "#d2453b", R
                        SOLICITUD_PENDIENTE: "#f08a2c", MANTENIMIENTO: "#6fb6ff", DESPACHO_RECHAZADO: "#d2453b" };
 
 let api, mapa, ultimo = null;
+const VISTAS = ["despacho", "calles", "satelite"], NOMBRE_VISTA = { despacho: "DESPACHO", calles: "CALLES", satelite: "SATÉLITE" };
+const mosaicos = {};  // capa -> respuesta del puente (se pide una sola vez)
+let vistaActual = "despacho";
 const vista = { robotElegido: null, llamada: null, mostrados: 0, inicio: Date.now(), tarjetas: {} };
 
 window.addEventListener("pywebviewready", iniciar);
@@ -48,6 +51,33 @@ function mostrarNombreEdificio(nombre, x, y) {
   const ancho = $("mapa").clientWidth, derecha = x + 14 + etiqueta.offsetWidth > ancho;
   etiqueta.style.left = `${derecha ? x - 14 - etiqueta.offsetWidth : x + 14}px`;
   etiqueta.style.top = `${y - 30}px`;
+}
+
+async function cambiarVista() {
+  const vista = VISTAS[(VISTAS.indexOf(vistaActual) + 1) % VISTAS.length];
+  vistaActual = vista;
+  if (vista !== "despacho" && !mosaicos[vista]) {
+    avisar("cargando mapa…");
+    const respuesta = await api.mosaico(vista);
+    if (respuesta.error) {  // sin red: se queda en DESPACHO
+      vistaActual = "despacho";
+      mapa.usarVista("despacho");
+      return avisar(respuesta.error);
+    }
+    mosaicos[vista] = respuesta;
+  }
+  if (vistaActual !== vista) return;  // el operador ya pidió otra mientras bajaba
+  mapa.usarVista(vista, mosaicos[vista]);
+  $("credito-mapa").textContent = vista === "despacho" ? "© OpenStreetMap contributors" : mosaicos[vista].credito;
+  avisar(`vista ${NOMBRE_VISTA[vista]}`);
+}
+
+let temporizadorAviso;
+function avisar(texto) {
+  $("aviso-mapa").textContent = texto.toUpperCase();
+  $("aviso-mapa").hidden = false;
+  clearTimeout(temporizadorAviso);
+  temporizadorAviso = setTimeout(() => { $("aviso-mapa").hidden = true; }, 4000);
 }
 
 async function ciclo() {
@@ -232,6 +262,7 @@ function conectarControles() {
   $("boton-auto").addEventListener("click", () => vista.llamada !== null && despacharCon(api.despachar_auto(vista.llamada)));
   document.querySelector("[data-cerrar=llamada]").addEventListener("click", cerrarLlamada);
   document.querySelector("[data-cerrar=robot]").addEventListener("click", () => elegirRobot(vista.robotElegido));
+  $("boton-vista").addEventListener("click", cambiarVista);
   $("boton-modo").addEventListener("click", () => mapa.alternar());
   $("boton-girar").addEventListener("click", () => mapa.girar());
   $("boton-mas").addEventListener("click", () => mapa.acercar(1.4));
@@ -251,6 +282,7 @@ function conectarControles() {
     if (e.key.toLowerCase() === "a" && vista.llamada !== null) despacharCon(api.despachar_auto(vista.llamada));
     if (e.key === "Tab" && mapa.alternar) { e.preventDefault(); mapa.alternar(); }
     if (e.key.toLowerCase() === "r" && mapa.girar) mapa.girar();
+    if (e.key.toLowerCase() === "v") cambiarVista();
   });
 }
 

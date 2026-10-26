@@ -1,4 +1,5 @@
-// Campus en 3D con three.js: edificios extruidos con aristas claras.
+// Campus en 3D con three.js: edificios extruidos con aristas claras (vista DESPACHO) o, en las vistas
+// CALLES y SATÉLITE, con la imagen real en el suelo y en los techos, luz y sombras.
 // La misma cámara pasa de vista cenital (2D) a oblicua (3D) con una transición. Robots, rutas y
 // balizas se dibujan encima en un canvas 2D, con las mismas funciones que el mapa de respaldo.
 import * as THREE from "three";
@@ -24,6 +25,8 @@ export class Mapa3D {
     this.modo = "3D";
     this.renderer = new THREE.WebGLRenderer({ canvas: lienzo, antialias: true });  // sin WebGL lanza un error
     this.renderer.setPixelRatio(window.devicePixelRatio || 1);
+    this.renderer.shadowMap.enabled = true;
+    this.vista = "despacho";
 
     const xs = geo.perimetro.map(p => p[0]), ys = geo.perimetro.map(p => p[1]);
     this.tamano = Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys));
@@ -82,24 +85,69 @@ export class Mapa3D {
     suelo.rotation.x = -Math.PI / 2;
     suelo.position.y = -0.2;
     this.escena.add(suelo);
+    this.estiloDespacho = [suelo];  // lo que se oculta en las vistas realistas
     for (const camino of this.geo.caminos) {
       const linea = new THREE.Line(new THREE.BufferGeometry().setFromPoints(camino.puntos.map(([x, y]) => a3(x, y, 0.1))),
                                    CALLES.has(camino.tipo) ? m.calle : m.sendero);
       this.escena.add(linea);
+      this.estiloDespacho.push(linea);
     }
     this.edificios = this.geo.edificios.map(e => {
       const volumen = new THREE.ExtrudeGeometry(forma(e.contorno), { depth: e.altura, bevelEnabled: false });
       volumen.rotateX(-Math.PI / 2);  // la extrusión (z) pasa a ser la altura (y) y el norte queda en -z
       const cuerpo = new THREE.Mesh(volumen, e.en_campus ? [m.techo, m.pared] : [m.techoCiudad, m.paredCiudad]);
+      cuerpo.castShadow = cuerpo.receiveShadow = true;
       const aristas = new THREE.LineSegments(new THREE.EdgesGeometry(volumen, 25), e.en_campus ? m.arista : m.aristaCiudad);
       this.escena.add(cuerpo, aristas);
+      this.estiloDespacho.push(aristas);
       return { cuerpo, aristas, en_campus: e.en_campus };
     });
+    // luz para las vistas realistas (los materiales de DESPACHO no la usan)
+    this.luzCielo = new THREE.HemisphereLight(0xffffff, 0x45503f, 1.1);
+    this.sol = new THREE.DirectionalLight(0xffffff, 1.7);
+    this.sol.position.set(-250, 400, 150);
+    this.sol.castShadow = true;
+    Object.assign(this.sol.shadow.camera, { left: -700, right: 700, top: 700, bottom: -700, near: 10, far: 1500 });
+    this.sol.shadow.mapSize.set(2048, 2048);
+    this.escena.add(this.luzCielo, this.sol, this.sol.target);
+  }
+
+  // --- Vistas realistas -------------------------------------------------------------------
+  usarVista(vista, mosaico) {
+    this.vista = vista;
+    if (this.sueloReal) { this.escena.remove(this.sueloReal); this.sueloReal = null; }
+    if (vista !== "despacho") {
+      let techo;
+      const [x0, y0, x1, y1] = mosaico.caja, ancho = x1 - x0, alto = y1 - y0;
+      const foto = new THREE.TextureLoader().load(mosaico.imagen, () => { techo.needsUpdate = true; });  // la copia de los techos también
+      foto.colorSpace = THREE.SRGBColorSpace;
+      foto.anisotropy = this.renderer.capabilities.getMaxAnisotropy();
+      this.sueloReal = new THREE.Mesh(new THREE.PlaneGeometry(ancho, alto), new THREE.MeshStandardMaterial({ map: foto }));
+      this.sueloReal.rotation.x = -Math.PI / 2;
+      this.sueloReal.position.copy(a3(x0 + ancho / 2, y0 + alto / 2, -0.3));
+      this.sueloReal.receiveShadow = true;
+      this.escena.add(this.sueloReal);
+      // los techos usan la misma foto: las tapas de ExtrudeGeometry traen sus coordenadas en metros
+      techo = foto.clone();
+      techo.repeat.set(1 / ancho, 1 / alto);
+      techo.offset.set(-x0 / ancho, -y0 / alto);
+      this.materialesReales = {
+        techo: vista === "satelite" ? new THREE.MeshStandardMaterial({ map: techo }) : new THREE.MeshStandardMaterial({ color: "#ece9e4" }),
+        pared: new THREE.MeshStandardMaterial({ color: vista === "satelite" ? "#b9b2a6" : "#d3cdc4" }),
+        techoNaranja: new THREE.MeshStandardMaterial({ color: RESALTADO.edificio }),
+        paredNaranja: new THREE.MeshStandardMaterial({ color: RESALTADO.pared }),
+      };
+    }
+    this.estiloDespacho.forEach(objeto => { objeto.visible = vista === "despacho"; });
+    this._aplicarPaleta(this._paleta);
+    this._aplicarResaltados(new Set(this._resaltados.split(",").filter(Boolean).map(Number)));
   }
 
   _aplicarPaleta(p) {
-    const m = this.materiales;
-    this.escena.background = new THREE.Color(p.fondo);
+    const m = this.materiales, noche = p === PALETA.noche;
+    this.escena.background = new THREE.Color(this.vista === "despacho" ? p.fondo : noche ? "#05080f" : "#1b2b2e");
+    this.luzCielo.intensity = noche ? 0.25 : 1.1;  // de noche la foto se oscurece y se ven las luces
+    this.sol.intensity = noche ? 0.15 : 1.7;
     m.campus.color.set(p.campus); m.techo.color.set(p.edificio); m.pared.color.set(p.pared);
     m.techoCiudad.color.set(p.ciudad); m.paredCiudad.color.set(p.paredCiudad);
     m.arista.color.set(p.arista); m.aristaCiudad.color.set(p.aristaCiudad);
@@ -110,6 +158,11 @@ export class Mapa3D {
     const m = this.materiales;
     this.edificios.forEach((e, i) => {
       const naranja = indices.has(i);
+      if (this.vista !== "despacho") {
+        const r = this.materialesReales;
+        e.cuerpo.material = naranja ? [r.techoNaranja, r.paredNaranja] : [r.techo, r.pared];
+        return;
+      }
       e.cuerpo.material = naranja ? [m.techoNaranja, m.paredNaranja] : e.en_campus ? [m.techo, m.pared] : [m.techoCiudad, m.paredCiudad];
       e.aristas.material = naranja ? m.aristaNaranja : e.en_campus ? m.arista : m.aristaCiudad;
     });

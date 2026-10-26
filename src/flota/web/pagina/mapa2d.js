@@ -28,6 +28,7 @@ export class Mapa2D {
     this.paleta = PALETA.dia;
     this.resaltados = "";
     this.fondo = document.createElement("canvas");
+    this.foto = null;  // en las vistas realistas: { imagen, caja }
     this._escuchar();
     new ResizeObserver(() => this._redimensionar()).observe(lienzo);
   }
@@ -36,6 +37,13 @@ export class Mapa2D {
 
   proyectar(x, y) {
     return [this.ancho / 2 + (x - this.centro[0]) * this.escala, this.alto / 2 - (y - this.centro[1]) * this.escala];
+  }
+
+  usarVista(vista, mosaico) {
+    if (vista === "despacho") { this.foto = null; return this._dibujarFondo(); }
+    const imagen = new Image();
+    imagen.onload = () => { this.foto = { imagen, caja: mosaico.caja }; this._dibujarFondo(); };
+    imagen.src = mosaico.imagen;
   }
 
   acercar(factor) {
@@ -91,6 +99,7 @@ export class Mapa2D {
     const c = this.fondo.getContext("2d"), p = this.paleta;
     const camino = puntos => { c.beginPath(); puntos.forEach(([x, y], i) => c[i ? "lineTo" : "moveTo"](...this.proyectar(x, y))); };
     c.fillStyle = p.fondo; c.fillRect(0, 0, this.ancho, this.alto);
+    if (this.foto) return this._dibujarFoto(c);
     camino(this.geo.perimetro); c.closePath(); c.fillStyle = p.campus; c.fill(); c.strokeStyle = p.sendero; c.lineWidth = 2; c.stroke();
     c.lineCap = "round";
     for (const v of this.geo.caminos) {
@@ -105,6 +114,18 @@ export class Mapa2D {
       c.strokeStyle = naranja ? RESALTADO.arista : e.en_campus ? p.arista : p.aristaCiudad;
       c.lineWidth = e.en_campus ? 1.5 : 1; c.stroke();
     });
+  }
+
+  _dibujarFoto(c) {  // la imagen real y solo el contorno naranja de los edificios con una llamada
+    const [x0, y0, x1, y1] = this.foto.caja, [sx, sy] = this.proyectar(x0, y1);
+    c.drawImage(this.foto.imagen, sx, sy, (x1 - x0) * this.escala, (y1 - y0) * this.escala);
+    if (this.paleta === PALETA.noche) { c.fillStyle = "rgba(5, 12, 28, .6)"; c.fillRect(0, 0, this.ancho, this.alto); }
+    c.strokeStyle = RESALTADO.edificio; c.lineWidth = 3;
+    for (const i of this.resaltados.split(",").filter(Boolean).map(Number)) {
+      c.beginPath();
+      this.geo.edificios[i].contorno.forEach(([x, y], k) => c[k ? "lineTo" : "moveTo"](...this.proyectar(x, y)));
+      c.closePath(); c.stroke();
+    }
   }
 
   dibujar(estado) {

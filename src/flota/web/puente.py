@@ -7,6 +7,7 @@ import base64
 import io
 import threading
 
+from flota.gui.mosaico import CAPAS, mosaico
 from flota.gui.retratos import retrato
 from flota.gui.tema import RECURSOS
 
@@ -41,6 +42,19 @@ class PuenteWeb:
         buffer = io.BytesIO()
         retrato(id_robot, tipo).save(buffer, format="PNG")
         return "data:image/png;base64," + base64.b64encode(buffer.getvalue()).decode()
+
+    def mosaico(self, capa: str) -> dict:
+        """Mosaico de CALLES o SATÉLITE como data URL; la primera vez se baja (fuera del candado)."""
+        if capa not in CAPAS:
+            return {"error": f"Vista desconocida: {capa}"}
+        resultado = mosaico(capa)
+        if resultado is None:
+            return {"error": "vista realista sin conexión"}
+        imagen, caja = resultado
+        buffer = io.BytesIO()
+        imagen.save(buffer, format="JPEG", quality=85)
+        return {"imagen": "data:image/jpeg;base64," + base64.b64encode(buffer.getvalue()).decode(),
+                "caja": caja, "credito": CAPAS[capa]["credito"]}
 
     def fuentes(self) -> dict:
         """Las mismas fuentes de la versión de escritorio, en base64 para la API FontFace."""
