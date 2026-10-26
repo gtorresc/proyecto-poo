@@ -83,3 +83,32 @@ def test_la_mascara_es_opaca_en_el_centro_y_transparente_en_los_bordes():
     assert m.getpixel((100, 50)) == 255
     assert m.getpixel((0, 0)) == 0 and m.getpixel((199, 50)) == 0 and m.getpixel((100, 99)) == 0
     assert 0 < m.getpixel((10, 50)) < 255  # la transición es gradual
+
+
+def test_una_cache_corrupta_se_vuelve_a_bajar(tmp_path, monkeypatch):
+    (tmp_path / "calles-z19.jpg").write_bytes(bytes([0xFF, 0xD8]) + b"esto no es un JPEG completo")
+    monkeypatch.setattr(requests.Session, "get", lambda self, url, timeout: RespuestaFalsa())
+    imagen, _ = mosaico.mosaico("calles", tmp_path, CAMPUS)
+    assert imagen.size[0] > 0
+    assert Image.open(tmp_path / "calles-z19.jpg").size == imagen.size  # quedó una caché sana
+    assert not list(tmp_path.glob("*.tmp"))
+
+
+def test_dos_pedidos_a_la_vez_bajan_los_tiles_una_sola_vez(tmp_path, monkeypatch):
+    import threading
+    import time
+    pedidos = []
+
+    def lento(self, url, timeout):
+        pedidos.append(url)
+        time.sleep(0.005)
+        return RespuestaFalsa()
+    monkeypatch.setattr(requests.Session, "get", lento)
+    hilos = [threading.Thread(target=mosaico.mosaico, args=("satelite", tmp_path, CAMPUS)) for _ in range(2)]
+    for h in hilos:
+        h.start()
+    for h in hilos:
+        h.join()
+    xs, ys = mosaico.rango_tiles(CAMPUS, 19)
+    assert len(pedidos) == len(xs) * len(ys)  # el segundo esperó y leyó la caché
+

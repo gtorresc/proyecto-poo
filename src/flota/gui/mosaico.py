@@ -4,6 +4,8 @@ Se bajan la primera vez y se guardan en una caché del usuario, fuera del reposi
 Esri no permite redistribuirlas). Sin red devuelve None y la interfaz se queda en la vista DESPACHO.
 """
 import math
+import os
+import threading
 from concurrent.futures import ThreadPoolExecutor
 from io import BytesIO
 from pathlib import Path
@@ -19,6 +21,7 @@ CACHE = Path.home() / ".cache" / "flota-udem"
 TIMEOUT_S = 10
 USER_AGENT = "FlotaRobotsUdeM/1.0 (proyecto academico de POO)"
 MAX_TILES = 200  # tope de seguridad: el campus necesita ~110 tiles por capa
+_candado = threading.Lock()  # una descarga a la vez: un segundo pedido espera y lee la caché
 CAPAS = {
     # CARTO pide API key desde 2026; los tiles de OSM se pueden usar con un User-Agent propio y caché
     "calles": {"url": "https://tile.openstreetmap.org/{z}/{x}/{y}.png", "zoom": 19,
@@ -61,13 +64,21 @@ def a_pixel(x: float, y: float, caja: list[float], tamano: tuple[int, int]) -> t
 
 def mosaico(capa: str, carpeta: Path = CACHE, limites: Optional[dict] = None):
     """(imagen, caja en metros) de la capa, o None si no se pudo bajar algún tile."""
+    with _candado:
+        return _mosaico(capa, carpeta, limites)
+
+
+def _mosaico(capa: str, carpeta: Path, limites: Optional[dict]):
     datos = CAPAS[capa]
     zoom, lado = datos["zoom"], datos["lado"]
     xs, ys = rango_tiles(limites or cargar_geometria()["limites"], zoom)
     caja = caja_metros(xs, ys, zoom)
     archivo = carpeta / f"{capa}-z{zoom}.jpg"
     if archivo.exists():
-        return Image.open(archivo).convert("RGB"), caja
+        try:
+            return Image.open(archivo).convert("RGB"), caja
+        except OSError:  # caché corrupta (p. ej. la app se cerró mientras guardaba): se vuelve a bajar
+            archivo.unlink(missing_ok=True)
     if len(xs) * len(ys) > MAX_TILES:
         raise ValueError("Demasiados tiles para el área pedida")
     sesion = requests.Session()
@@ -86,7 +97,9 @@ def mosaico(capa: str, carpeta: Path = CACHE, limites: Optional[dict] = None):
     except (requests.RequestException, OSError):  # sin red, error HTTP o imagen rota
         return None
     carpeta.mkdir(parents=True, exist_ok=True)
-    imagen.save(archivo, quality=88)
+    temporal = archivo.with_suffix(".tmp")
+    imagen.save(temporal, format="JPEG", quality=88)
+    os.replace(temporal, archivo)  # atómico: nunca queda un JPEG a medio escribir con el nombre bueno
     return imagen, caja
 
 
