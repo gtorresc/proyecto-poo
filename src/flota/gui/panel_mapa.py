@@ -14,7 +14,7 @@ from PIL import Image, ImageDraw, ImageEnhance, ImageTk
 from flota.gui import tema
 from flota.gui.capa_clima import CapaClima
 from flota.gui.centro_control import dentro
-from flota.gui.mosaico import CAPAS, color_techo, mosaico
+from flota.gui.mosaico import CAPAS, color_techo, mascara_bordes, mosaico
 from flota.gui.retratos import CARPETA
 
 INTERVALO_MS = 50
@@ -29,6 +29,8 @@ VISTAS = ["despacho", "calles", "satelite"]
 NOMBRE_VISTA = {"despacho": "DESPACHO", "calles": "CALLES", "satelite": "SATÉLITE"}
 EDIFICIO_CALLES = ("#ece9e4", "#d3cdc4", "#b3ab9f")  # techo, pared y arista, como los edificios 3D de un mapa
 AVISO_S = 4
+ZOOM_MIN_REAL = 1.4   # en las vistas realistas no se aleja tanto: el mosaico solo cubre el campus
+PANEO_REAL = 0.6      # y el centro solo se mueve dentro del 60 % central del mosaico
 
 
 class Camara:
@@ -36,6 +38,8 @@ class Camara:
 
     def __init__(self, limites: list[float], campus: list[list[float]]):
         self._limites = limites  # [x_min, y_min, x_max, y_max] del área descargada
+        self.limites_paneo = limites  # por dónde puede ir el centro; las vistas realistas lo achican
+        self.zoom_min = ZOOM_MIN
         xs, ys = [p[0] for p in campus], [p[1] for p in campus]
         self._tamano_campus = max(max(xs) - min(xs), max(ys) - min(ys))
         self.centro = [(max(xs) + min(xs)) / 2, (max(ys) + min(ys)) / 2]
@@ -72,11 +76,26 @@ class Camara:
         xr, yr = -dx_px / self.escala, dy_px / (self.escala * self._inclinacion[0])
         x = self.centro[0] + xr * math.cos(a) + yr * math.sin(a)
         y = self.centro[1] - xr * math.sin(a) + yr * math.cos(a)
-        x_min, y_min, x_max, y_max = self._limites
-        self.centro = [min(max(x, x_min), x_max), min(max(y, y_min), y_max)]
+        self.centro = [x, y]
+        self._limitar()
 
     def acercar(self, factor: float) -> None:
-        self.zoom = min(max(self.zoom * factor, ZOOM_MIN), ZOOM_MAX)
+        self.zoom = min(max(self.zoom * factor, self.zoom_min), ZOOM_MAX)
+
+    def restringir(self, caja=None) -> None:
+        """Sin caja: los límites de siempre. Con la caja del mosaico: zoom mínimo más alto y paneo al centro."""
+        if caja is None:
+            self.limites_paneo, self.zoom_min = self._limites, ZOOM_MIN
+        else:
+            x0, y0, x1, y1 = caja
+            mx, my = (x1 - x0) * (1 - PANEO_REAL) / 2, (y1 - y0) * (1 - PANEO_REAL) / 2
+            self.limites_paneo, self.zoom_min = [x0 + mx, y0 + my, x1 - mx, y1 - my], ZOOM_MIN_REAL
+        self.zoom = max(self.zoom, self.zoom_min)
+        self._limitar()
+
+    def _limitar(self) -> None:
+        x_min, y_min, x_max, y_max = self.limites_paneo
+        self.centro = [min(max(self.centro[0], x_min), x_max), min(max(self.centro[1], y_min), y_max)]
 
     def girar(self) -> None:
         self.giro = (self.giro + 90) % 360
@@ -201,13 +220,19 @@ class PanelMapa(ctk.CTkFrame):
     def _bajar_mosaico(self, capa: str) -> None:
         resultado = mosaico(capa)
         if resultado is not None:
-            colores = [color_techo(*resultado, e["contorno"]) for e in self._geo["edificios"]]
-            resultado = (*resultado, colores)
+            imagen, caja = resultado
+            colores = [color_techo(imagen, caja, e["contorno"]) for e in self._geo["edificios"]]
+            difuminada = imagen.convert("RGBA")
+            difuminada.putalpha(mascara_bordes(imagen.size))  # los bordes se pierden en la neblina
+            resultado = (difuminada, caja, colores)
         self._mosaicos[capa] = resultado  # el ciclo de la ventana lo nota y redibuja
 
     def _vista_activa(self) -> str:
         """Hasta que el mosaico esté listo (o si no se pudo bajar) se ve DESPACHO."""
         return self.vista if self._mosaicos.get(self.vista) else "despacho"
+
+    def _ajustar_camara(self, vista: str) -> None:
+        self.camara.restringir(self._mosaicos[vista][1] if vista != "despacho" else None)
 
     def _avisar(self, texto: str) -> None:
         self._aviso = (texto, time.monotonic() + AVISO_S)
@@ -280,9 +305,12 @@ class PanelMapa(ctk.CTkFrame):
         c, cam = self.canvas, self.camara
         imagen, caja, colores = self._mosaicos[vista]
         noche = self._paleta is tema.NOCHE
-        c.configure(bg=tema.BISEL)
-        suelo = imagen.transform((max(1, cam.ancho), max(1, cam.alto)), Image.AFFINE,
-                                 cam.afin_suelo(caja, imagen.size), resample=Image.BILINEAR, fillcolor=tema.BISEL)
+        neblina = tema.NEBLINA[vista][1 if noche else 0]
+        c.configure(bg=neblina)
+        tamano = (max(1, cam.ancho), max(1, cam.alto))
+        foto = imagen.transform(tamano, Image.AFFINE, cam.afin_suelo(caja, imagen.size), resample=Image.BILINEAR,
+                                fillcolor=(0, 0, 0, 0))
+        suelo = Image.alpha_composite(Image.new("RGBA", tamano, neblina), foto).convert("RGB")
         if noche:  # de noche la foto se oscurece y se enfría, para que se vean las luces
             suelo = Image.blend(ImageEnhance.Brightness(suelo).enhance(0.4),
                                 Image.new("RGB", suelo.size, "#0b1a33"), 0.25)
@@ -355,6 +383,8 @@ class PanelMapa(ctk.CTkFrame):
             self._avisar("vista realista sin conexion: se usa DESPACHO")
         vista = self._vista_activa()
         if paleta is not self._paleta or resaltados != self._resaltados or vista != self._vista_dibujada:
+            if vista != self._vista_dibujada:
+                self._ajustar_camara(vista)
             self._paleta, self._resaltados, self._vista_dibujada = paleta, resaltados, vista
             self._dibujar_fondo()
         self._dibujar_vivo(estado)

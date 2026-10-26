@@ -15,6 +15,8 @@ NOCHE = {"fondo_mapa": "#0c1a1c", "campus": "#0f2225", "edificio": "#10302c", "p
          "arista": "#46f0b4", "sendero": "#1f5a4c", "calle": "#14302e", "ciudad": "#0f2624",
          "pared_ciudad": "#0b1d1c", "arista_ciudad": "#1f6a58"}
 RESALTADO = {"edificio": "#f08a2c", "pared": "#c46a1c", "arista": "#ffd2a1"}  # edificio con una llamada
+# color en el que se pierden los bordes de la imagen real, de día y de noche
+NEBLINA = {"satelite": ("#56635c", "#05080f"), "calles": ("#dcd8d0", "#0b0f16")}
 BISEL = "#1b2b2e"
 PANEL = "#132326"
 TEXTO = "#c9e6e2"

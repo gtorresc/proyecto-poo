@@ -80,6 +80,27 @@ export function dibujarEncima(c, ancho, alto, ambiente, geo, proyectar, escala, 
   }
 }
 
+// Recorta la foto con un degradado: opaca en el centro, transparente en el borde (como la neblina de
+// los juegos viejos). Se hace aquí y no en Python para no mandar un PNG enorme por el puente.
+export function difuminarBordes(imagen, fraccion = 0.18) {
+  const c = document.createElement("canvas");
+  c.width = imagen.width; c.height = imagen.height;
+  const g = c.getContext("2d");
+  g.drawImage(imagen, 0, 0);
+  g.globalCompositeOperation = "destination-in";
+  const franja = (x0, y0, x1, y1) => {
+    const d = g.createLinearGradient(x0, y0, x1, y1);
+    d.addColorStop(0, "rgba(0,0,0,0)"); d.addColorStop(fraccion, "rgba(0,0,0,1)");
+    d.addColorStop(1 - fraccion, "rgba(0,0,0,1)"); d.addColorStop(1, "rgba(0,0,0,0)");
+    g.fillStyle = d; g.fillRect(0, 0, c.width, c.height);
+  };
+  franja(0, 0, c.width, 0);
+  franja(0, 0, 0, c.height);
+  return c;
+}
+
+export const NEBLINA = { satelite: ["#56635c", "#05080f"], calles: ["#dcd8d0", "#0b0f16"] };
+
 export function puntoEnPoligono(x, y, poligono) {
   let dentro = false;
   for (let i = 0, j = poligono.length - 1; i < poligono.length; j = i++) {

@@ -75,3 +75,11 @@ def test_color_del_techo_es_el_promedio_dentro_del_contorno():
     caja = [0, 0, 200, 100]
     assert mosaico.color_techo(imagen, caja, [[10, 10], [90, 10], [90, 90], [10, 90]]) == "#c86432"
     assert mosaico.color_techo(imagen, caja, [[110, 10], [190, 10], [190, 90]]) == "#000000"
+
+
+def test_la_mascara_es_opaca_en_el_centro_y_transparente_en_los_bordes():
+    m = mosaico.mascara_bordes((200, 100))
+    assert m.size == (200, 100)
+    assert m.getpixel((100, 50)) == 255
+    assert m.getpixel((0, 0)) == 0 and m.getpixel((199, 50)) == 0 and m.getpixel((100, 99)) == 0
+    assert 0 < m.getpixel((10, 50)) < 255  # la transición es gradual

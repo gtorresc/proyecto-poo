@@ -150,3 +150,17 @@ def test_el_edificio_bajo_el_cursor_es_el_mas_cercano(camara):
     assert edificio_bajo(camara, [lejos, cerca], *camara.proyectar(0, -50)) == 1
     assert edificio_bajo(camara, [lejos, cerca], *camara.proyectar(0, 50)) == 0
     assert edificio_bajo(camara, [lejos, cerca], *camara.proyectar(200, 0)) is None
+
+
+def test_las_vistas_realistas_limitan_el_zoom_y_el_paneo(camara):
+    caja = [-200, -200, 200, 200]
+    camara.restringir(caja)
+    assert camara.zoom >= camara.zoom_min > 1
+    camara.acercar(0.1)
+    assert camara.zoom == camara.zoom_min
+    camara.mover(-100_000, 100_000)
+    assert camara.centro == [120, 120]  # 60 % central de la caja
+    camara.restringir(None)  # de vuelta a DESPACHO
+    assert camara.zoom_min == 1
+    camara.mover(-100_000, 100_000)
+    assert camara.centro == [300, 300]

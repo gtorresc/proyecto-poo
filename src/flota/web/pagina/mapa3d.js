@@ -5,11 +5,12 @@
 import * as THREE from "three";
 import { OrbitControls } from "./vendor/OrbitControls.js";
 import { PALETA, RESALTADO, FRANJA, dibujarBaliza, dibujarRobot } from "./mapa2d.js";
-import { ALTURA_NUBES_M, dibujarEncima, dibujarLuces, posicionNube, spriteNube } from "./clima.js";
+import { ALTURA_NUBES_M, NEBLINA, difuminarBordes, dibujarEncima, dibujarLuces, posicionNube, spriteNube } from "./clima.js";
 
 const CALLES = new Set(["residential", "tertiary", "unclassified", "living_street"]);
 const POLAR_3D = 0.95, POLAR_2D = 0.0001;  // ángulo desde la vertical
 const ZOOM_MIN = 1, ZOOM_MAX = 4, RADIO_CLIC = 18, ESPERA_ANILLO_S = 90, TRANSICION_MS = 600;
+const ZOOM_MIN_REAL = 1.6, PANEO_REAL = 0.6;  // en las vistas realistas: no alejarse ni salirse del mosaico
 
 // el norte (y) del campus es -z en three.js; la altura es y
 const a3 = (x, y, z = 0) => new THREE.Vector3(x, z, -y);
@@ -119,10 +120,18 @@ export class Mapa3D {
     if (vista !== "despacho") {
       let techo;
       const [x0, y0, x1, y1] = mosaico.caja, ancho = x1 - x0, alto = y1 - y0;
-      const foto = new THREE.TextureLoader().load(mosaico.imagen, () => { techo.needsUpdate = true; });  // la copia de los techos también
-      foto.colorSpace = THREE.SRGBColorSpace;
-      foto.anisotropy = this.renderer.capabilities.getMaxAnisotropy();
-      this.sueloReal = new THREE.Mesh(new THREE.PlaneGeometry(ancho, alto), new THREE.MeshStandardMaterial({ map: foto }));
+      const suelo = new THREE.Texture(), foto = new THREE.Texture(), imagen = new Image();
+      imagen.onload = () => {  // el suelo lleva los bordes difuminados; los techos, la foto tal cual
+        suelo.image = difuminarBordes(imagen); foto.image = imagen;
+        suelo.needsUpdate = foto.needsUpdate = techo.needsUpdate = true;
+      };
+      imagen.src = mosaico.imagen;
+      for (const t of [suelo, foto]) {
+        t.colorSpace = THREE.SRGBColorSpace;
+        t.anisotropy = this.renderer.capabilities.getMaxAnisotropy();
+      }
+      this.sueloReal = new THREE.Mesh(new THREE.PlaneGeometry(ancho, alto),
+                                      new THREE.MeshStandardMaterial({ map: suelo, transparent: true, depthWrite: false }));
       this.sueloReal.rotation.x = -Math.PI / 2;
       this.sueloReal.position.copy(a3(x0 + ancho / 2, y0 + alto / 2, -0.3));
       this.sueloReal.receiveShadow = true;
@@ -139,13 +148,23 @@ export class Mapa3D {
       };
     }
     this.estiloDespacho.forEach(objeto => { objeto.visible = vista === "despacho"; });
+    if (vista === "despacho") {
+      this.limitesPaneo = this.geo.limites;
+      this.controles.minZoom = ZOOM_MIN;
+    } else {
+      const [x0, y0, x1, y1] = mosaico.caja, mx = (x1 - x0) * (1 - PANEO_REAL) / 2, my = (y1 - y0) * (1 - PANEO_REAL) / 2;
+      this.limitesPaneo = [x0 + mx, y0 + my, x1 - mx, y1 - my];
+      this.controles.minZoom = ZOOM_MIN_REAL;
+      if (this.camara.zoom < ZOOM_MIN_REAL) { this.camara.zoom = ZOOM_MIN_REAL; this.camara.updateProjectionMatrix(); }
+    }
+    this._limitar();
     this._aplicarPaleta(this._paleta);
     this._aplicarResaltados(new Set(this._resaltados.split(",").filter(Boolean).map(Number)));
   }
 
   _aplicarPaleta(p) {
     const m = this.materiales, noche = p === PALETA.noche;
-    this.escena.background = new THREE.Color(this.vista === "despacho" ? p.fondo : noche ? "#05080f" : "#1b2b2e");
+    this.escena.background = new THREE.Color(this.vista === "despacho" ? p.fondo : NEBLINA[this.vista][noche ? 1 : 0]);
     this.luzCielo.intensity = noche ? 0.25 : 1.1;  // de noche la foto se oscurece y se ven las luces
     this.sol.intensity = noche ? 0.15 : 1.7;
     m.campus.color.set(p.campus); m.techo.color.set(p.edificio); m.pared.color.set(p.pared);
@@ -196,12 +215,12 @@ export class Mapa3D {
   girar() { this._transicion(this.controles.getPolarAngle(), this.controles.getAzimuthalAngle() + Math.PI / 2); }
 
   acercar(factor) {
-    this.camara.zoom = Math.min(Math.max(this.camara.zoom * factor, ZOOM_MIN), ZOOM_MAX);
+    this.camara.zoom = Math.min(Math.max(this.camara.zoom * factor, this.controles.minZoom), ZOOM_MAX);
     this.camara.updateProjectionMatrix();
   }
 
-  _limitar() {  // el mapa no se sale del área descargada
-    const [xMin, yMin, xMax, yMax] = this.geo.limites, t = this.controles.target;
+  _limitar() {  // el mapa no se sale del área descargada (en las vistas realistas, del centro del mosaico)
+    const [xMin, yMin, xMax, yMax] = this.limitesPaneo || this.geo.limites, t = this.controles.target;
     const x = Math.min(Math.max(t.x, xMin), xMax), z = Math.min(Math.max(t.z, -yMax), -yMin);
     if (x !== t.x || z !== t.z) {
       this.camara.position.x += x - t.x; this.camara.position.z += z - t.z;

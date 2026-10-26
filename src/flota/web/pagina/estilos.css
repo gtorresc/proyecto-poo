@@ -50,7 +50,7 @@ button, select, input { font: inherit; color: inherit; }
   background: #0c1a1c; border: 1px solid var(--alerta); color: #f3efe4; font-size: 12px; }
 .aviso-mapa { position: absolute; left: 12px; top: 12px; font-family: var(--titulo); font-size: 15px;
   color: var(--alerta); text-shadow: 0 0 6px #000; pointer-events: none; }
-.credito-mapa { position: absolute; left: 8px; bottom: 4px; font-size: 10px; color: #b9fff2; opacity: .8; }
+.credito-mapa { position: absolute; left: 8px; bottom: 4px; font-size: 10px; color: #b9fff2; padding: 1px 6px; background: #0c1a1cb3; }
 
 .ficha { position: absolute; left: 12px; width: 360px; background: var(--papel); color: var(--tinta);
   border: 2px solid #3d5a5e; border-radius: 2px; box-shadow: 0 6px 18px #0008; }

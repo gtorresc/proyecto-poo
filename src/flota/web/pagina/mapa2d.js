@@ -1,6 +1,6 @@
 // Mapa 2D del campus en un <canvas>: vista cenital, zoom y arrastre limitados al campus.
 // Es el respaldo de la vista 3D: solo usa Canvas 2D, que funciona en cualquier navegador.
-import { dibujarEncima, dibujarLuces, puntoEnPoligono } from "./clima.js";
+import { NEBLINA, difuminarBordes, dibujarEncima, dibujarLuces, puntoEnPoligono } from "./clima.js";
 
 export const PALETA = {
   dia: { fondo: "#1d7f7b", campus: "#23918b", edificio: "#2bb3a3", pared: "#1f8f84", arista: "#b9fff2",
@@ -42,7 +42,7 @@ export class Mapa2D {
   usarVista(vista, mosaico) {
     if (vista === "despacho") { this.foto = null; return this._dibujarFondo(); }
     const imagen = new Image();
-    imagen.onload = () => { this.foto = { imagen, caja: mosaico.caja }; this._dibujarFondo(); };
+    imagen.onload = () => { this.foto = { imagen: difuminarBordes(imagen), caja: mosaico.caja, vista }; this._dibujarFondo(); };
     imagen.src = mosaico.imagen;
   }
 
@@ -118,6 +118,7 @@ export class Mapa2D {
 
   _dibujarFoto(c) {  // la imagen real y solo el contorno naranja de los edificios con una llamada
     const [x0, y0, x1, y1] = this.foto.caja, [sx, sy] = this.proyectar(x0, y1);
+    c.fillStyle = NEBLINA[this.foto.vista][this.paleta === PALETA.noche ? 1 : 0]; c.fillRect(0, 0, this.ancho, this.alto);
     c.drawImage(this.foto.imagen, sx, sy, (x1 - x0) * this.escala, (y1 - y0) * this.escala);
     if (this.paleta === PALETA.noche) { c.fillStyle = "rgba(5, 12, 28, .6)"; c.fillRect(0, 0, this.ancho, this.alto); }
     c.strokeStyle = RESALTADO.edificio; c.lineWidth = 3;

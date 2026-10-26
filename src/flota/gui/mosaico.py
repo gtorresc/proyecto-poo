@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Optional
 
 import requests
-from PIL import Image, ImageDraw, ImageStat
+from PIL import Image, ImageChops, ImageDraw, ImageStat
 
 from flota.campus import cargar_geometria
 from flota.gui.centro_control import a_metros
@@ -88,6 +88,23 @@ def mosaico(capa: str, carpeta: Path = CACHE, limites: Optional[dict] = None):
     carpeta.mkdir(parents=True, exist_ok=True)
     imagen.save(archivo, quality=88)
     return imagen, caja
+
+
+def mascara_bordes(tamano: tuple[int, int], fraccion: float = 0.18) -> Image.Image:
+    """Opaca en el centro y transparente en los bordes: la foto se pierde en la neblina, sin corte."""
+    def perfil(largo: int) -> list[int]:
+        borde = max(1, largo * fraccion)
+        valores = []
+        for i in range(largo):
+            t = min(1.0, min(i, largo - 1 - i) / borde)
+            valores.append(int(255 * t * t * (3 - 2 * t)))  # curva suave (smoothstep)
+        return valores
+    ancho, alto = tamano
+    horizontal = Image.new("L", (ancho, 1))
+    horizontal.putdata(perfil(ancho))
+    vertical = Image.new("L", (1, alto))
+    vertical.putdata(perfil(alto))
+    return ImageChops.multiply(horizontal.resize(tamano), vertical.resize(tamano))
 
 
 def color_techo(imagen: Image.Image, caja: list[float], contorno: list) -> str:
