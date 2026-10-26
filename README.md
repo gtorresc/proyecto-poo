@@ -4,7 +4,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white" alt="Python 3.10 o superior">
-  <img src="https://img.shields.io/badge/pruebas-199%20en%20verde-3f9a6b" alt="199 pruebas en verde">
+  <img src="https://img.shields.io/badge/pruebas-212%20en%20verde-3f9a6b" alt="212 pruebas en verde">
   <img src="https://img.shields.io/badge/interfaz-CustomTkinter%20%C2%B7%20web%203D-1d7f7b" alt="Interfaz CustomTkinter y web 3D">
   <a href="LICENSE.md"><img src="https://img.shields.io/badge/licencia-MIT-f08a2c" alt="Licencia MIT"></a>
 </p>
@@ -48,6 +48,17 @@ sistema le dice exactamente qué regla lo impide.
   <br><sub><b>Versión web (pywebview + three.js).</b> El mismo sistema, con una cámara 3D que se puede rotar.</sub>
 </p>
 
+<table>
+  <tr>
+    <td width="50%"><img src="docs/img/vista_satelite_3d.png" alt="Vista satélite en 3D: la foto aérea en el suelo y en los techos de los bloques" width="100%"></td>
+    <td width="50%"><img src="docs/img/vista_calles_3d.png" alt="Vista de calles en 3D con los edificios extruidos sobre el mapa de OpenStreetMap" width="100%"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub><b>Vista SATÉLITE en 3D</b> (web): la foto aérea en el suelo y en cada techo.</sub></td>
+    <td align="center"><sub><b>Vista CALLES en 3D</b> (escritorio): el mapa de calles con los bloques extruidos.</sub></td>
+  </tr>
+</table>
+
 ## Características
 
 **Modelo orientado a objetos**
@@ -64,6 +75,8 @@ sistema le dice exactamente qué regla lo impide.
 
 **Interfaz**
 - El campus real (95 edificios y 300 caminos de OpenStreetMap) dibujado en 2D o 3D, sin tiles y sin internet.
+- Tres vistas: DESPACHO (la del estilo de la consola), CALLES (mapa de OpenStreetMap) y SATÉLITE (foto aérea),
+  todas en 2D o 3D. En 3D satelital cada techo muestra su pedazo de la foto real.
 - Balizas sobre los edificios, rutas animadas, plantilla de robots con su estado y el nombre de cada bloque al pasar el mouse.
 - El clima se ve en el mapa: nubes que avanzan con el viento, lluvia, niebla, relámpagos y luces encendidas de noche.
 - Dos interfaces sobre el mismo modelo de presentación: escritorio (CustomTkinter) y web (pywebview + three.js).
@@ -76,6 +89,8 @@ sistema le dice exactamente qué regla lo impide.
 | [Nager.Date](https://date.nager.at) | festivos de Colombia | se asume día hábil |
 | [Overpass (OpenStreetMap)](https://overpass-api.de) | edificios y senderos del campus (se descarga una vez) | se usan los datos guardados |
 | [RoboHash](https://robohash.org) | retrato de cada robot | ícono dibujado según el tipo |
+| [Tiles de OpenStreetMap](https://www.openstreetmap.org) | vista CALLES (se descarga una vez y queda en caché) | se queda en la vista DESPACHO |
+| [Esri World Imagery](https://www.arcgis.com/home/item.html?id=10df2279f9684e4a9f6a7f08febac2a9) | vista SATÉLITE (se descarga una vez y queda en caché) | se queda en la vista DESPACHO |
 
 ## Versiones
 
@@ -114,7 +129,8 @@ python -m pytest          # pruebas
 
 - `--real` también vale con `--gui` y `--web`: arrancan con Open-Meteo y Nager.Date en vez de los simuladores.
 - `python main.py --web --depurar` abre las herramientas de desarrollo del navegador.
-- Con los simuladores, todo funciona sin internet.
+- Con los simuladores, todo funciona sin internet. Las vistas CALLES y SATÉLITE necesitan internet la primera
+  vez (unos 5 segundos); después quedan guardadas en `~/.cache/flota-udem/`, fuera del repositorio.
 
 | Acción | Cómo |
 | --- | --- |
@@ -126,6 +142,7 @@ python -m pytest          # pruebas
 | Vista 2D o 3D, girar | `Tab` y `R`, o los botones del mapa; rueda para el zoom, arrastre para moverse |
 | Rotar libremente (web) | botón derecho del mouse |
 | Cambiar clima o festivos | panel "CLIMA Y CALENDARIO": simulador o APIs reales, en vivo |
+| Cambiar de vista (DESPACHO, CALLES, SATÉLITE) | `V` o el botón VISTA |
 | Cerrar fichas | `Esc` |
 
 ## Arquitectura
@@ -189,7 +206,8 @@ Cada diferencia entre el UML y el código, con su motivo, está en [CAMBIOS_DISE
 
 ## Créditos
 
-- Datos del mapa: © OpenStreetMap contributors, [ODbL](https://www.openstreetmap.org/copyright).
+- Datos del mapa y tiles de la vista CALLES: © OpenStreetMap contributors, [ODbL](https://www.openstreetmap.org/copyright).
+- Imágenes de la vista SATÉLITE: © Esri, Maxar, Earthstar Geographics (no se incluyen en el repositorio).
 - Clima: [Open-Meteo](https://open-meteo.com). Festivos: [Nager.Date](https://date.nager.at).
 - Retratos de los robots: [RoboHash](https://robohash.org), set1 de Zikri Kader (CC-BY).
 - Fuentes: Oswald y Share Tech Mono (SIL Open Font License). 3D: [three.js](https://threejs.org) (MIT).
