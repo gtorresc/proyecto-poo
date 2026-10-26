@@ -76,8 +76,8 @@ class Robot(ABC):
     def calcular_costo(self, origen: Ubicacion, destino: Ubicacion, carga) -> float:
         return self._distancia_ruta_km(origen, destino) * self.costo_por_km() * carga.recargo()
 
-    def _consumo_viaje(self, hasta: Ubicacion) -> float:
-        return self._distancia_ruta_km(self._ubicacion, hasta) * self.consumo_por_km()
+    def _consumo_entre(self, origen: Ubicacion, destino: Ubicacion) -> float:
+        return self._distancia_ruta_km(origen, destino) * self.consumo_por_km()
 
     def puede_atender(self, solicitud) -> bool:
         return self.motivo_rechazo(solicitud) is None
@@ -96,8 +96,8 @@ class Robot(ABC):
                 return f"{self._id} no llega a {lugar.nombre} ({lugar.zona.value})"
         if not carga.es_compatible_con(self):
             return f"carga incompatible: {type(carga).__name__} en {self._id}"
-        consumo = (self._consumo_viaje(solicitud.origen)
-                   + self._distancia_ruta_km(solicitud.origen, solicitud.destino) * self.consumo_por_km())
+        consumo = (self._consumo_entre(self._ubicacion, solicitud.origen)
+                   + self._consumo_entre(solicitud.origen, solicitud.destino))
         if not self._bateria.alcanza_para(consumo):
             return f"batería insuficiente: {self.nivel_bateria:.0f} %"
         return None
@@ -112,7 +112,7 @@ class Robot(ABC):
         if not carga.es_compatible_con(self):
             raise ValueError(f"{self._id} no es compatible con {carga!r}")
         if origen is not None:
-            self._bateria.consumir(self._consumo_viaje(origen))
+            self._bateria.consumir(self._consumo_entre(self._ubicacion, origen))
             self._ubicacion = origen
         self._carga_actual = carga
         self._estado = EstadoRobot.EN_RUTA
@@ -120,7 +120,7 @@ class Robot(ABC):
     def entregar(self, destino: Ubicacion) -> None:
         if self._estado is not EstadoRobot.EN_RUTA or self._carga_actual is None:
             raise ValueError(f"{self._id} no lleva ninguna carga")
-        self._bateria.consumir(self._consumo_viaje(destino))
+        self._bateria.consumir(self._consumo_entre(self._ubicacion, destino))
         self._ubicacion = destino
         self._carga_actual = None
         self._estado = EstadoRobot.DISPONIBLE
