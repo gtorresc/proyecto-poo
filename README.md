@@ -34,18 +34,13 @@ sistema le dice exactamente qué regla lo impide.
 ## Capturas
 
 <p align="center">
-  <img src="docs/img/gui_3d.png" alt="Interfaz de escritorio con el campus en 3D, una llamada abierta y un despacho rechazado por tormenta" width="100%">
-  <br><sub><b>Escritorio (CustomTkinter), vista 3D.</b> El dron se rechaza por tormenta eléctrica: la ficha y la radio dicen por qué.</sub>
+  <img src="docs/img/web_3d.png" alt="Centro de control web con el campus en 3D, una llamada abierta y un despacho rechazado por tormenta" width="100%">
+  <br><sub><b>Vista 3D con tormenta.</b> El operador eligió el dron para la azotea del bloque 11: la ficha y la radio dicen por qué no puede volar.</sub>
 </p>
 
 <p align="center">
-  <img src="docs/img/gui_2d_noche.png" alt="Interfaz de escritorio en 2D de noche con la ficha y el radar de un robot" width="100%">
-  <br><sub><b>Vista 2D de noche.</b> Ficha del robot de orugas con su radar: velocidad, carga, autonomía, economía y alcance.</sub>
-</p>
-
-<p align="center">
-  <img src="docs/img/web_3d.png" alt="Versión web con el campus en 3D hecho con three.js" width="100%">
-  <br><sub><b>Versión web (pywebview + three.js).</b> El mismo sistema, con una cámara 3D que se puede rotar.</sub>
+  <img src="docs/img/web_2d_noche.png" alt="Centro de control web en 2D de noche con la ficha y el radar del robot de orugas" width="100%">
+  <br><sub><b>Vista 2D de noche.</b> Ficha del robot de orugas en ruta, con su radar: velocidad, carga, autonomía, economía y alcance.</sub>
 </p>
 
 <table>
@@ -54,8 +49,8 @@ sistema le dice exactamente qué regla lo impide.
     <td width="50%"><img src="docs/img/vista_calles_3d.png" alt="Vista de calles en 3D con los edificios extruidos sobre el mapa de OpenStreetMap" width="100%"></td>
   </tr>
   <tr>
-    <td align="center"><sub><b>Vista SATÉLITE en 3D</b> (web): la foto aérea en el suelo y en cada techo.</sub></td>
-    <td align="center"><sub><b>Vista CALLES en 3D</b> (escritorio): el mapa de calles con los bloques extruidos.</sub></td>
+    <td align="center"><sub><b>Vista SATÉLITE en 3D:</b> la foto aérea en el suelo y en cada techo.</sub></td>
+    <td align="center"><sub><b>Vista CALLES en 3D:</b> el mapa de OpenStreetMap con los bloques extruidos.</sub></td>
   </tr>
 </table>
 
