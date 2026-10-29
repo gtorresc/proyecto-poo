@@ -5,8 +5,8 @@ import pytest
 import requests
 from PIL import Image
 
-from flota.gui import mosaico
-from flota.gui.centro_control import a_metros
+from flota.presentacion import mosaico
+from flota.presentacion.centro_control import a_metros
 
 CAMPUS = {"sur": 6.2279, "oeste": -75.6161, "norte": 6.2341, "este": -75.6089}
 

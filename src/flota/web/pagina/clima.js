@@ -1,5 +1,5 @@
 // El clima dibujado sobre el mapa web: luces de noche, nubes, lluvia, niebla y relámpagos.
-// Usa estado.ambiente y la geometría de CentroControl; es la misma lógica de gui/capa_clima.py.
+// Usa estado.ambiente y la geometría de CentroControl: Python decide, aquí solo se dibuja.
 
 export const ALTURA_NUBES_M = 70;
 const EXAGERAR_VIENTO = 4, MARGEN_NUBES_M = 150, GOTAS_MAX = 160, CAIDA_PX_S = 650;
@@ -99,7 +99,7 @@ export function difuminarBordes(imagen, fraccion = 0.18) {
   return c;
 }
 
-export const NEBLINA = {};  // lo llena cargarTema() con los colores de gui/tema.py
+export const NEBLINA = {};  // lo llena cargarTema() con los colores de presentacion/tema.py
 
 export function puntoEnPoligono(x, y, poligono) {
   let dentro = false;

@@ -8,7 +8,7 @@ from flota.campus import cargar_campus, cargar_geometria
 from flota.dominio.bitacora import Bitacora
 from flota.dominio.estado_robot import EstadoRobot
 from flota.dominio.solicitud import EstadoSolicitud
-from flota.gui.centro_control import (CENTRO_CAMPUS, CentroControl, a_metros,
+from flota.presentacion.centro_control import (CENTRO_CAMPUS, CentroControl, a_metros,
                                       punto_en_recorrido)
 from flota.servicios.calendario_simulado import CalendarioSimulado
 from flota.servicios.clima_simulado import ServicioClimaSimulado
@@ -155,7 +155,7 @@ def test_cambiar_a_los_proveedores_reales(centro):
 
 
 def test_el_mantenimiento_termina_solo(centro, reloj):
-    """La recarga la cronometra el asignador (una sola regla para las dos interfaces y la consola)."""
+    """La recarga la cronometra el asignador (una sola regla para la web y la consola)."""
     id_sol = centro.crear_solicitud("biblioteca", "derecho", "documento", 1)
     centro.despachar(id_sol, "R-01")
     centro._flota.buscar("R-01")._bateria.consumir(80)  # llega con la batería baja

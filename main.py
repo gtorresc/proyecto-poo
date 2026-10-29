@@ -1,4 +1,7 @@
-"""Demo por consola: un día en el campus UdeM. `python main.py` (clima simulado); `--real` usa Open-Meteo, `--gui` abre la ventana y `--web` la versión web."""
+"""UdeM·DESPACHO. `python main.py` abre el centro de control web; `--consola` corre la demo por texto.
+
+`--real` usa Open-Meteo y Nager.Date en vez de los simuladores; `--depurar` abre las herramientas del navegador.
+"""
 import sys
 from pathlib import Path
 
@@ -52,11 +55,8 @@ def main(real: bool = False) -> None:
 
 
 if __name__ == "__main__":
-    if "--web" in sys.argv:
+    if "--consola" in sys.argv:
+        main(real="--real" in sys.argv)
+    else:
         from flota.web.app_web import main as abrir_web
         abrir_web(real="--real" in sys.argv, depurar="--depurar" in sys.argv)
-    elif "--gui" in sys.argv:
-        from flota.gui.app import main as abrir_gui
-        abrir_gui(real="--real" in sys.argv)
-    else:
-        main(real="--real" in sys.argv)

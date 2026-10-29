@@ -2,7 +2,7 @@
 // Es el respaldo de la vista 3D: solo usa Canvas 2D, que funciona en cualquier navegador.
 import { NEBLINA, difuminarBordes, dibujarEncima, dibujarLuces, puntoEnPoligono } from "./clima.js";
 
-// Los colores salen de gui/tema.py (llegan con la geometría): las dos interfaces usan los mismos
+// Los colores salen de presentacion/tema.py (llegan con la geometría): no hay una copia en JS
 export const PALETA = { dia: {}, noche: {} }, RESALTADO = {}, FRANJA = {};
 export const CALLES = new Set(["residential", "tertiary", "unclassified", "living_street"]);
 

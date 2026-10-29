@@ -1,4 +1,4 @@
-"""Retratos de los robots para la plantilla: RoboHash (CC-BY), guardados en recursos/retratos.
+"""Retratos de los robots para la plantilla de la web: RoboHash (CC-BY), guardados en recursos/retratos.
 
 Se descargan una vez por id. Sin internet, se dibuja un ícono por tipo de robot.
 """
@@ -7,7 +7,7 @@ from pathlib import Path
 import requests
 from PIL import Image, ImageDraw
 
-from flota.gui.tema import RECURSOS
+from flota.presentacion.tema import RECURSOS
 
 CARPETA = RECURSOS / "retratos"
 URL = "https://robohash.org/{id}.png?set=set1&size=200x200"
@@ -16,7 +16,7 @@ USER_AGENT = "FlotaRobotsUdeM/1.0 (proyecto academico de POO)"
 
 
 def retrato(id_robot: str, tipo: str, carpeta: Path = CARPETA) -> Image.Image:
-    """Llamar fuera del hilo de la ventana: la primera vez puede tardar hasta el timeout."""
+    """Llamar fuera del hilo de la página: la primera vez puede tardar hasta el timeout."""
     archivo = carpeta / f"{id_robot}.png"
     if not archivo.exists():
         try:

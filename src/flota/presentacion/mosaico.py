@@ -15,7 +15,7 @@ import requests
 from PIL import Image, ImageChops, ImageDraw, ImageStat
 
 from flota.campus import cargar_geometria
-from flota.gui.centro_control import a_metros
+from flota.presentacion.centro_control import a_metros
 
 CACHE = Path.home() / ".cache" / "flota-udem"
 TIMEOUT_S = 10

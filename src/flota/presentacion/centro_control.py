@@ -1,6 +1,6 @@
-"""Modelo de presentación: lo que las dos interfaces (CustomTkinter y web) muestran y piden.
+"""Modelo de presentación: lo que la interfaz web muestra y pide.
 
-No sabe de tkinter ni de HTML. Traduce el dominio a datos simples (dicts, listas, números) y
+No sabe de HTML ni de JavaScript. Traduce el dominio a datos simples (dicts, listas, números) y
 convierte los clics del operador en llamadas al dominio. Las reglas siguen en el dominio.
 """
 import math
@@ -110,7 +110,7 @@ class CentroControl:
                                 "x": x, "y": y, "edificio": edificio})
         sur_oeste = a_metros(geo["limites"]["sur"], geo["limites"]["oeste"])
         norte_este = a_metros(geo["limites"]["norte"], geo["limites"]["este"])
-        azar = random.Random(7)  # fijo: las luces y las nubes salen igual en las dos interfaces
+        azar = random.Random(7)  # fijo: las luces y las nubes salen igual en cada arranque
         nubes = [{"x": azar.uniform(sur_oeste[0], norte_este[0]), "y": azar.uniform(sur_oeste[1], norte_este[1]),
                   "radio": azar.uniform(70, 140), "semilla": azar.randrange(10_000)} for _ in range(NUBES)]
         return {"fuente": geo["fuente"], "limites": [*sur_oeste, *norte_este],
@@ -367,7 +367,7 @@ def _luces(edificio: dict, azar: random.Random) -> list[list[float]]:
 
 
 def ambiente(clima: dict) -> dict:
-    """Cuánto se nota cada efecto del clima en el mapa (0 a 1). Las dos interfaces dibujan lo mismo."""
+    """Cuánto se nota cada efecto del clima en el mapa (0 a 1). La web solo lo dibuja."""
     if clima.get("consultando") or not clima.get("disponible"):
         return {"nubes": 0.2, "lluvia": 0.0, "niebla": 0.0, "tormenta": False, "noche": False, "viento": [0.0, 0.0]}
     tormenta, prob = clima["tormenta"], clima["lluvia"] / 100
@@ -383,7 +383,7 @@ def ambiente(clima: dict) -> dict:
 
 
 def crear_centro(real: bool = False) -> CentroControl:
-    """Arma el campus, la flota y el asignador; lo usan las dos interfaces."""
+    """Arma el campus, la flota y el asignador que usa la web."""
     ubicaciones, flota = cargar_campus()
     bitacora = Bitacora()
     asignador = AsignadorEntregas(flota, ServicioClimaSimulado(), bitacora)

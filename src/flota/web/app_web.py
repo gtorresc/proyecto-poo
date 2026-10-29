@@ -1,7 +1,7 @@
 """Abre la interfaz web en una ventana de escritorio (pywebview usa el WebView2 de Windows)."""
 from pathlib import Path
 
-from flota.gui.centro_control import crear_centro
+from flota.presentacion.centro_control import crear_centro
 from flota.web.puente import PuenteWeb
 
 PAGINA = Path(__file__).with_name("pagina") / "index.html"

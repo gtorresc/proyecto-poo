@@ -10,7 +10,7 @@ import pytest
 from flota.campus import cargar_campus, cargar_geometria, crear_red_senderos
 from flota.dominio.estado_robot import EstadoRobot
 from flota.dominio.ubicacion import Ubicacion, Zona
-from flota.gui.centro_control import dentro
+from flota.presentacion.centro_control import dentro
 
 RAIZ = Path(__file__).resolve().parent.parent
 
@@ -25,7 +25,7 @@ def test_campus_trae_ubicaciones_de_las_tres_zonas_y_la_flota_inicial():
 
 
 def test_la_demo_corre_completa():
-    r = subprocess.run([sys.executable, str(RAIZ / "main.py")], capture_output=True,
+    r = subprocess.run([sys.executable, str(RAIZ / "main.py"), "--consola"], capture_output=True,
                        encoding="utf-8", timeout=30)
     assert r.returncode == 0, r.stderr
     assert "rechazo por clima: 2" in r.stdout and "entrega exitosa: 5" in r.stdout

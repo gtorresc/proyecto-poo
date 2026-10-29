@@ -7,7 +7,7 @@ import pytest
 from flota.asignacion.asignador import AsignadorEntregas
 from flota.campus import cargar_campus, cargar_geometria
 from flota.dominio.bitacora import Bitacora
-from flota.gui.centro_control import CentroControl
+from flota.presentacion.centro_control import CentroControl
 from flota.servicios.calendario_simulado import CalendarioSimulado
 from flota.servicios.clima_simulado import ServicioClimaSimulado
 from flota.web.app_web import PAGINA
@@ -85,7 +85,7 @@ def test_el_mosaico_viaja_como_data_url_o_como_error(puente, monkeypatch):
 
 
 def test_la_web_recibe_la_paleta_de_python(puente):
-    from flota.gui import tema
+    from flota.presentacion import tema
     t = puente.geometria()["tema"]
     assert t["dia"] == tema.DIA and t["noche"] == tema.NOCHE and t["franja"] == tema.FRANJA
     assert t["neblina"]["satelite"] == tema.NEBLINA["satelite"]
