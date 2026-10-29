@@ -4,8 +4,8 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white" alt="Python 3.10 o superior">
-  <img src="https://img.shields.io/badge/pruebas-264%20en%20verde-3f9a6b" alt="264 pruebas en verde">
-  <img src="https://img.shields.io/badge/interfaz-CustomTkinter%20%C2%B7%20web%203D-1d7f7b" alt="Interfaz CustomTkinter y web 3D">
+  <img src="https://img.shields.io/badge/pruebas-235%20en%20verde-3f9a6b" alt="235 pruebas en verde">
+  <img src="https://img.shields.io/badge/interfaz-web%203D%20%C2%B7%20three.js-1d7f7b" alt="Interfaz web 3D con three.js">
   <a href="LICENSE.md"><img src="https://img.shields.io/badge/licencia-MIT-f08a2c" alt="Licencia MIT"></a>
 </p>
 
@@ -74,7 +74,8 @@ sistema le dice exactamente qué regla lo impide.
   todas en 2D o 3D. En 3D satelital cada techo muestra su pedazo de la foto real.
 - Balizas sobre los edificios, rutas animadas, plantilla de robots con su estado y el nombre de cada bloque al pasar el mouse.
 - El clima se ve en el mapa: nubes que avanzan con el viento, lluvia, niebla, relámpagos y luces encendidas de noche.
-- Dos interfaces sobre el mismo modelo de presentación: escritorio (CustomTkinter) y web (pywebview + three.js).
+- Una interfaz web (HTML, CSS y three.js) en una ventana de escritorio con pywebview, sobre un modelo de
+  presentación en Python que se prueba sin abrir ninguna ventana.
 
 **APIs gratuitas, sin API key**
 
@@ -91,18 +92,15 @@ sistema le dice exactamente qué regla lo impide.
 
 | Versión | Dónde | Qué tiene |
 | --- | --- | --- |
-| Entregada (Fase 5) | rama `main`, tag `v1-entrega` | dominio, clima, asignación y la interfaz de CustomTkinter con el mapa de OpenStreetMap |
-| UdeM·DESPACHO | rama `udem-despacho` | todo lo anterior, más rutas por senderos, clima extendido, festivos, despacho manual, el campus en 2D/3D y la versión web |
+| Entregada (Fase 5) | tag `v1-entrega` | dominio, clima, asignación y una interfaz de CustomTkinter con el mapa de OpenStreetMap |
+| Final, UdeM·DESPACHO | rama `main`, tag `v2-final` | todo lo anterior, más rutas por senderos, clima extendido, festivos, despacho manual y el centro de control web con el campus en 2D/3D |
 
-Para tener las dos versiones lado a lado sin cambiar de rama:
-
-```bash
-git worktree add ../proyecto-poo-mejorado udem-despacho
-```
+La versión final reemplazó la interfaz de CustomTkinter por la web, con el visto bueno del profesor. La
+entregada se puede ver con `git checkout v1-entrega`.
 
 ## Instalación
 
-Requisitos: Python 3.10 o superior. Para la versión web, Windows 10/11 con WebView2 (viene instalado en Windows 11).
+Requisitos: Python 3.10 o superior y Windows 10/11 con WebView2 (viene instalado en Windows 11).
 
 ```bash
 git clone https://github.com/gtorresc/proyecto-poo.git
@@ -115,15 +113,13 @@ pip install -r requirements.txt
 ## Uso
 
 ```bash
-python main.py --gui      # centro de control de escritorio (CustomTkinter)
-python main.py --web      # la misma interfaz en versión web (pywebview + three.js)
-python main.py            # demo por consola con el campus UdeM y clima simulado
-python main.py --real     # la demo consultando el clima real
-python -m pytest          # pruebas
+python main.py              # centro de control (pywebview + three.js)
+python main.py --real       # el mismo, con Open-Meteo y Nager.Date en vez de los simuladores
+python main.py --consola    # demo por texto: un día en el campus con clima simulado
+python -m pytest            # pruebas
 ```
 
-- `--real` también vale con `--gui` y `--web`: arrancan con Open-Meteo y Nager.Date en vez de los simuladores.
-- `python main.py --web --depurar` abre las herramientas de desarrollo del navegador.
+- `--real` también vale con `--consola`, y `python main.py --depurar` abre las herramientas de desarrollo del navegador.
 - Con los simuladores, todo funciona sin internet. Las vistas CALLES y SATÉLITE necesitan internet la primera
   vez (unos 5 segundos); después quedan guardadas en `~/.cache/flota-udem/`, fuera del repositorio.
 
@@ -135,7 +131,7 @@ python -m pytest          # pruebas
 | Ver el nombre de un bloque | pasar el mouse por encima del edificio |
 | Ver el radar de un robot | clic en su tarjeta (sin llamada abierta) |
 | Vista 2D o 3D, girar | `Tab` y `R`, o los botones del mapa; rueda para el zoom, arrastre para moverse |
-| Rotar libremente (web) | botón derecho del mouse |
+| Rotar libremente | botón derecho del mouse |
 | Cambiar clima o festivos | panel "CLIMA Y CALENDARIO": simulador o APIs reales, en vivo |
 | Cambiar de vista (DESPACHO, CALLES, SATÉLITE) | `V` o el botón VISTA |
 | Cerrar fichas | `Esc` |
@@ -145,7 +141,6 @@ python -m pytest          # pruebas
 ```mermaid
 flowchart LR
     subgraph Presentación
-        TK["Escritorio<br>CustomTkinter"]
         WEB["Web<br>HTML · JS · three.js"]
         PUENTE["PuenteWeb"]
         CC["CentroControl<br>modelo de presentación"]
@@ -158,23 +153,22 @@ flowchart LR
         CLIMA["ProveedorClima<br>Open-Meteo · simulado"]
         CAL["ProveedorCalendario<br>Nager.Date · simulado"]
     end
-    TK --> CC
     WEB --> PUENTE --> CC
     CC --> AS --> DOM
     AS --> CLIMA
     AS --> CAL
 ```
 
-Las interfaces no tienen reglas de negocio: solo leen el estado de `CentroControl` y le pasan las
-acciones del operador. Si se borran, el sistema y sus pruebas siguen funcionando.
+La interfaz no tiene reglas de negocio: solo lee el estado de `CentroControl` y le pasa las acciones
+del operador. Si se borra, el sistema y sus pruebas siguen funcionando.
 
 ```
-main.py            punto de entrada (consola, --gui, --web)
+main.py            punto de entrada (centro de control web o --consola)
 src/flota/
   dominio/         robots, cargas, batería, ubicaciones, rutas, solicitudes, bitácora
   servicios/       proveedores de clima y de festivos (API real y simulador)
   asignacion/      asignación automática y despacho manual
-  gui/             CentroControl e interfaz de escritorio
+  presentacion/    CentroControl, paleta, retratos y mosaicos de las vistas realistas
   web/             interfaz web y PuenteWeb
   recursos/        fuentes, retratos y sus licencias
   campus.json      puntos de entrega y flota inicial
