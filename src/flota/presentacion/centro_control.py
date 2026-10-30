@@ -31,7 +31,7 @@ ALTURA_VUELO_M = 30
 SEPARACION_M = 24  # robots quietos en el mismo lugar se dibujan en ronda, para que no se tapen
 EVENTOS_VISIBLES = 50
 NUBES = 10  # cuántas nubes cruzan el mapa como máximo
-REFRESCO_CLIMA_S = 300  # el clima real se vuelve a leer cada 5 min (la píldora no queda con el dato del arranque)
+REFRESCO_CLIMA_S = 240  # antes de que venza la caché de 5 min: el asignador nunca espera la red en el hilo de la página
 
 TIPOS_CARGA = {  # clave -> (nombre en pantalla, fábrica a partir del peso)
     "documento": ("Documento", lambda peso: Documento("Documento", peso)),

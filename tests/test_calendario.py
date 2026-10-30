@@ -12,7 +12,7 @@ from flota.dominio.robot import RobotRuedas
 from flota.dominio.solicitud import EstadoSolicitud, SolicitudEntrega
 from flota.dominio.ubicacion import Ubicacion, Zona
 from flota.servicios import calendario_nager_date
-from flota.servicios.calendario_nager_date import CalendarioNagerDate
+from flota.servicios.calendario_nager_date import CACHE_FALLO_S, CalendarioNagerDate
 from flota.servicios.calendario_simulado import CalendarioSimulado
 from flota.servicios.clima_simulado import ServicioClimaSimulado
 from flota.servicios.proveedor_calendario import ProveedorCalendario
@@ -77,9 +77,13 @@ def test_nager_date_lee_los_festivos_y_consulta_una_vez_por_anio(llamadas):
 def test_si_nager_date_falla_es_dia_habil_y_se_reintenta(llamadas, fallo):
     respuestas, urls = llamadas
     respuestas.extend([fallo, RespuestaFalsa(FESTIVOS_2026)])
-    cal = CalendarioNagerDate()
+    ahora = [0.0]
+    cal = CalendarioNagerDate(reloj=lambda: ahora[0])
     assert cal.festivo(date(2026, 1, 1)) is None  # supuesto S10
-    assert cal.festivo(date(2026, 1, 1)) == "Año Nuevo"  # el fallo no quedó guardado
+    ahora[0] += CACHE_FALLO_S - 1
+    assert cal.festivo(date(2026, 1, 1)) is None and len(urls) == 1  # sin red no espera el timeout otra vez
+    ahora[0] += 1
+    assert cal.festivo(date(2026, 1, 1)) == "Año Nuevo"  # pasado el plazo, se reintenta
     assert len(urls) == 2
 
 

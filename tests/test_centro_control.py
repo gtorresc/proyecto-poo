@@ -11,6 +11,7 @@ from flota.dominio.estado_robot import EstadoRobot
 from flota.dominio.solicitud import EstadoSolicitud
 from flota.presentacion.centro_control import (CENTRO_CAMPUS, REFRESCO_CLIMA_S, CentroControl, a_metros,
                                       punto_en_recorrido)
+from flota.servicios.clima_open_meteo import CACHE_S
 from flota.servicios.calendario_simulado import CalendarioSimulado
 from flota.servicios.clima_simulado import ServicioClimaSimulado
 
@@ -153,6 +154,10 @@ def test_cambiar_a_los_proveedores_reales(centro):
     clima = centro.estado()["clima"]
     assert clima["proveedor"] == "Open-Meteo" and clima["viento"] == 50 and not clima["drones_autorizados"]
     assert centro.estado()["calendario"] == {"proveedor": "Nager.Date", "festivo": "Festivo real"}
+
+
+def test_el_clima_real_se_relee_antes_de_que_venza_su_cache():
+    assert REFRESCO_CLIMA_S < CACHE_S  # si no, un despacho con dron esperaría la red con la ventana congelada
 
 
 def test_refrescar_el_clima_real_no_borra_el_ultimo_reporte(reloj):
