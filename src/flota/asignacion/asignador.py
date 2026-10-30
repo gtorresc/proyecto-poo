@@ -53,9 +53,16 @@ class AsignadorEntregas:
         return tuple(self._en_curso.values())
 
     def asignar(self, solicitud: SolicitudEntrega) -> bool:
-        """True si un robot quedó asignado; si no, la solicitud queda pendiente y se reintentará."""
+        """True si un robot quedó asignado. Si no, la solicitud queda pendiente y se reintentará,
+        o falla si ningún robot de la flota podría atenderla nunca."""
         if solicitud.estado is not EstadoSolicitud.PENDIENTE:  # antes de tocar ningún robot
             raise ValueError(f"Solicitud {solicitud.id} ya está {solicitud.estado.value}")
+        imposible = self._motivo_imposible(solicitud)
+        if imposible:
+            solicitud.marcar_fallida(imposible)
+            self._pendientes.pop(solicitud.id, None)
+            self._bitacora.registrar(TipoEvento.ENTREGA_FALLIDA, f"Solicitud {solicitud.id}: {imposible}")
+            return False
         asignada, motivo = self._intentar(solicitud)
         if asignada:
             self._pendientes.pop(solicitud.id, None)
@@ -134,6 +141,13 @@ class AsignadorEntregas:
                 robot.terminar_mantenimiento()
                 self._bitacora.registrar(TipoEvento.MANTENIMIENTO, "Recargado: vuelve a la flota", id_robot)
         return len(listos)
+
+    def _motivo_imposible(self, solicitud: SolicitudEntrega) -> Optional[str]:
+        """Si ningún robot de la flota la atendería aunque esperara (peso, zonas o tipo de carga), por qué."""
+        motivos = [r.motivo_incapaz(solicitud) for r in self._flota.robots]
+        if not motivos or None in motivos:  # sin robots todavía puede llegar uno: se espera
+            return None
+        return "ningún robot de la flota puede llevarla (" + "; ".join(motivos) + ")"
 
     def _motivo_festivo(self, solicitud: SolicitudEntrega) -> Optional[str]:
         if solicitud.carga.requiere_cafeteria() and self._calendario is not None:

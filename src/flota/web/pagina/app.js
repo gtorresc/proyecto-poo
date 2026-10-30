@@ -143,7 +143,13 @@ async function despacharCon(promesa) {
   const r = await promesa;
   if (r.error) return anunciar($("llamada-resultado"), r.error, false);
   const [ok, motivo] = r;
-  ok ? cerrarLlamada() : anunciar($("llamada-resultado"), `RECHAZADO: ${motivo}`, false);
+  if (ok) return cerrarLlamada();
+  anunciar($("llamada-resultado"), `RECHAZADO: ${motivo}`, false);
+  ultimo = await api.estado();
+  if (!ultimo.balizas.some(b => b.id === vista.llamada)) {  // falló: ningún robot podría llevarla
+    cerrarLlamada();
+    avisar(`llamada fallida: ${motivo}`);
+  }
 }
 
 function elegirRobot(id) {

@@ -109,3 +109,11 @@ def test_no_se_despacha_un_robot_ajeno_a_la_flota(entorno):
     with pytest.raises(ValueError):
         asignador.despachar(SolicitudEntrega(CAFETERIA, BIBLIOTECA, Documento("Acta", 1)),
                             RobotRuedas("R-99", ESTACION))
+
+
+def test_motivo_incapaz_ignora_lo_que_cambia_esperando():
+    robot = RobotRuedas("R-01", ESTACION, nivel_bateria=16)
+    robot.cargar(Documento("Otra", 1))
+    solicitud = SolicitudEntrega(CAFETERIA, BIBLIOTECA, Documento("Acta", 1))
+    assert robot.motivo_incapaz(solicitud) is None  # ocupado y sin batería, pero podría más adelante
+    assert robot.motivo_incapaz(SolicitudEntrega(CAFETERIA, AZOTEA, Documento("Acta", 1))).endswith("(azotea)")

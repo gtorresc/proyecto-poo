@@ -3,7 +3,7 @@ import pytest
 
 from flota.asignacion.asignador import DURACION_MANTENIMIENTO_S, AsignadorEntregas
 from flota.dominio.bitacora import Bitacora, TipoEvento
-from flota.dominio.carga import Alimento, Documento
+from flota.dominio.carga import Alimento, Documento, MaterialPeligroso
 from flota.dominio.estado_robot import EstadoRobot
 from flota.dominio.flota import Flota
 from flota.dominio.robot import Dron, RobotOrugas, RobotRuedas
@@ -90,7 +90,8 @@ def test_cambiar_proveedor_en_vivo(entorno):
 
 # --- Commit 11: pendientes, reintentos, entregas y mantenimiento ------------
 def test_sin_robot_queda_pendiente_y_se_registra(entorno):
-    _, bitacora, _, asignador = entorno
+    flota, bitacora, _, asignador = entorno
+    flota.agregar(RobotRuedas("R-02", ESTACION, tiene_control_temperatura=True, nivel_bateria=16))  # sin carga
     s = SolicitudEntrega(CAFETERIA, BIBLIOTECA, Alimento("Almuerzo", 1, 60))
     assert not asignador.asignar(s)
     assert asignador.pendientes == (s,) and s.motivo
@@ -98,6 +99,20 @@ def test_sin_robot_queda_pendiente_y_se_registra(entorno):
     asignador.reintentar_pendientes()  # sigue sin poder: ni se duplica ni se registra de nuevo
     assert asignador.pendientes == (s,)
     assert len(bitacora.filtrar(TipoEvento.SOLICITUD_PENDIENTE)) == 1
+
+
+@pytest.mark.parametrize("carga, destino", [
+    (MaterialPeligroso("Reactivos", 1, 2), AZOTEA),  # solo el dron llega a la azotea y no lleva peligrosos
+    (Documento("Archivo muerto", 50), BIBLIOTECA),   # más que la carga máxima de toda la flota
+])
+def test_si_ningun_robot_podria_atenderla_falla_y_se_registra(entorno, carga, destino):
+    _, bitacora, _, asignador = entorno
+    s = SolicitudEntrega(CAFETERIA, destino, carga)
+    assert not asignador.asignar(s)
+    assert s.estado is EstadoSolicitud.FALLIDA and s.motivo.startswith("ningún robot de la flota")
+    assert s not in asignador.pendientes  # no se reintenta para siempre
+    fallida, = bitacora.filtrar(TipoEvento.ENTREGA_FALLIDA)
+    assert f"Solicitud {s.id}" in fallida.mensaje
 
 
 def test_pendiente_por_clima_se_reintenta_cuando_mejora(entorno):

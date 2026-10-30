@@ -189,7 +189,8 @@ def test_la_bitacora_llega_como_texto(centro):
     centro.despachar_auto(centro.crear_solicitud("cafeteria", "azotea_b11", "peligroso", 1))
     eventos = centro.estado()["bitacora"]
     assert eventos["total"] == len(eventos["ultimos"]) >= 1
-    assert eventos["ultimos"][-1]["tipo"] == "SOLICITUD_PENDIENTE"
+    assert eventos["ultimos"][-1]["tipo"] == "ENTREGA_FALLIDA"  # ningún robot lleva peligrosos a una azotea
+    assert centro.estado()["balizas"] == []
     assert "REPORTE" in centro.exportar_bitacora()
     assert next(s for s in centro._asignador.en_curso).estado is EstadoSolicitud.ASIGNADA
 
