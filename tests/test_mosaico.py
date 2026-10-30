@@ -37,12 +37,6 @@ def test_el_rango_de_tiles_cubre_el_campus():
     assert caja[2] >= este_norte[0] and caja[3] >= este_norte[1]
 
 
-def test_de_metros_a_pixel():
-    caja = [-100, -50, 100, 50]
-    assert mosaico.a_pixel(-100, 50, caja, (400, 200)) == (0, 0)  # esquina noroeste
-    assert mosaico.a_pixel(0, 0, caja, (400, 200)) == (200, 100)
-
-
 def test_une_los_tiles_y_los_guarda_en_la_cache(tmp_path, monkeypatch):
     pedidos = []
 
@@ -67,22 +61,6 @@ def test_sin_red_o_con_un_tile_roto_devuelve_none(tmp_path, monkeypatch, falla):
     monkeypatch.setattr(requests.Session, "get", falso_get)
     assert mosaico.mosaico("calles", tmp_path, CAMPUS) is None
     assert not any(tmp_path.iterdir())  # no se guarda un mosaico incompleto
-
-
-def test_color_del_techo_es_el_promedio_dentro_del_contorno():
-    imagen = Image.new("RGB", (200, 100), (0, 0, 0))
-    imagen.paste((200, 100, 50), (0, 0, 100, 100))  # mitad oeste naranja, mitad este negra
-    caja = [0, 0, 200, 100]
-    assert mosaico.color_techo(imagen, caja, [[10, 10], [90, 10], [90, 90], [10, 90]]) == "#c86432"
-    assert mosaico.color_techo(imagen, caja, [[110, 10], [190, 10], [190, 90]]) == "#000000"
-
-
-def test_la_mascara_es_opaca_en_el_centro_y_transparente_en_los_bordes():
-    m = mosaico.mascara_bordes((200, 100))
-    assert m.size == (200, 100)
-    assert m.getpixel((100, 50)) == 255
-    assert m.getpixel((0, 0)) == 0 and m.getpixel((199, 50)) == 0 and m.getpixel((100, 99)) == 0
-    assert 0 < m.getpixel((10, 50)) < 255  # la transición es gradual
 
 
 def test_una_cache_corrupta_se_vuelve_a_bajar(tmp_path, monkeypatch):

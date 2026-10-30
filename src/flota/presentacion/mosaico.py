@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Optional
 
 import requests
-from PIL import Image, ImageChops, ImageDraw, ImageStat
+from PIL import Image
 
 from flota.campus import cargar_geometria
 from flota.presentacion.centro_control import a_metros
@@ -56,12 +56,6 @@ def caja_metros(xs: range, ys: range, zoom: int) -> list[float]:
     return [*a_metros(sur, oeste), *a_metros(norte, este)]
 
 
-def a_pixel(x: float, y: float, caja: list[float], tamano: tuple[int, int]) -> tuple[float, float]:
-    """De metros del campus a píxeles del mosaico (el campus es tan pequeño que basta una relación lineal)."""
-    x0, y0, x1, y1 = caja
-    return (x - x0) / (x1 - x0) * tamano[0], (y1 - y) / (y1 - y0) * tamano[1]
-
-
 def mosaico(capa: str, carpeta: Path = CACHE, limites: Optional[dict] = None):
     """(imagen, caja en metros) de la capa, o None si no se pudo bajar algún tile."""
     with _candado:
@@ -101,34 +95,3 @@ def _mosaico(capa: str, carpeta: Path, limites: Optional[dict]):
     imagen.save(temporal, format="JPEG", quality=88)
     os.replace(temporal, archivo)  # atómico: nunca queda un JPEG a medio escribir con el nombre bueno
     return imagen, caja
-
-
-def mascara_bordes(tamano: tuple[int, int], fraccion: float = 0.18) -> Image.Image:
-    """Opaca en el centro y transparente en los bordes: la foto se pierde en la neblina, sin corte."""
-    def perfil(largo: int) -> list[int]:
-        borde = max(1, largo * fraccion)
-        valores = []
-        for i in range(largo):
-            t = min(1.0, min(i, largo - 1 - i) / borde)
-            valores.append(int(255 * t * t * (3 - 2 * t)))  # curva suave (smoothstep)
-        return valores
-    ancho, alto = tamano
-    horizontal = Image.new("L", (ancho, 1))
-    horizontal.putdata(perfil(ancho))
-    vertical = Image.new("L", (1, alto))
-    vertical.putdata(perfil(alto))
-    return ImageChops.multiply(horizontal.resize(tamano), vertical.resize(tamano))
-
-
-def color_techo(imagen: Image.Image, caja: list[float], contorno: list) -> str:
-    """Color promedio de la foto dentro del contorno del edificio, en hexadecimal."""
-    puntos = [a_pixel(x, y, caja, imagen.size) for x, y in contorno]
-    izq, arr = max(0, int(min(p[0] for p in puntos))), max(0, int(min(p[1] for p in puntos)))
-    der, aba = int(max(p[0] for p in puntos)) + 1, int(max(p[1] for p in puntos)) + 1
-    recorte = imagen.crop((izq, arr, der, aba))
-    mascara = Image.new("L", recorte.size)
-    ImageDraw.Draw(mascara).polygon([(x - izq, y - arr) for x, y in puntos], fill=255)
-    if not mascara.getbbox():
-        return "#808080"
-    r, g, b = (int(v) for v in ImageStat.Stat(recorte, mascara).mean[:3])
-    return f"#{r:02x}{g:02x}{b:02x}"

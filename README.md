@@ -4,7 +4,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white" alt="Python 3.10 o superior">
-  <img src="https://img.shields.io/badge/pruebas-241%20en%20verde-3f9a6b" alt="241 pruebas en verde">
+  <img src="https://img.shields.io/badge/pruebas-238%20en%20verde-3f9a6b" alt="238 pruebas en verde">
   <img src="https://img.shields.io/badge/interfaz-web%203D%20%C2%B7%20three.js-1d7f7b" alt="Interfaz web 3D con three.js">
   <a href="LICENSE.md"><img src="https://img.shields.io/badge/licencia-MIT-f08a2c" alt="Licencia MIT"></a>
 </p>

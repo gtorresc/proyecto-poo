@@ -116,35 +116,12 @@ export class Mapa3D {
   usarVista(vista, mosaico) {
     this.vista = vista;
     if (this.sueloReal) { this.escena.remove(this.sueloReal); this.sueloReal = null; }
-    if (vista !== "despacho") {
-      let techo;
-      const [x0, y0, x1, y1] = mosaico.caja, ancho = x1 - x0, alto = y1 - y0;
-      const suelo = new THREE.Texture(), foto = new THREE.Texture(), imagen = new Image();
-      imagen.onload = () => {  // el suelo lleva los bordes difuminados; los techos, la foto tal cual
-        suelo.image = difuminarBordes(imagen); foto.image = imagen;
-        suelo.needsUpdate = foto.needsUpdate = techo.needsUpdate = true;
-      };
-      imagen.src = mosaico.imagen;
-      for (const t of [suelo, foto]) {
-        t.colorSpace = THREE.SRGBColorSpace;
-        t.anisotropy = this.renderer.capabilities.getMaxAnisotropy();
-      }
-      this.sueloReal = new THREE.Mesh(new THREE.PlaneGeometry(ancho, alto),
-                                      new THREE.MeshStandardMaterial({ map: suelo, transparent: true, depthWrite: false }));
-      this.sueloReal.rotation.x = -Math.PI / 2;
-      this.sueloReal.position.copy(a3(x0 + ancho / 2, y0 + alto / 2, -0.3));
-      this.sueloReal.receiveShadow = true;
+    if (vista !== "despacho") {  // el suelo y los materiales se crean una vez por vista: la GPU no acumula copias
+      this._reales = this._reales || {};
+      const real = this._reales[vista] || (this._reales[vista] = this._crearVistaReal(vista, mosaico));
+      this.sueloReal = real.suelo;
+      this.materialesReales = real.materiales;
       this.escena.add(this.sueloReal);
-      // los techos usan la misma foto: las tapas de ExtrudeGeometry traen sus coordenadas en metros
-      techo = foto.clone();
-      techo.repeat.set(1 / ancho, 1 / alto);
-      techo.offset.set(-x0 / ancho, -y0 / alto);
-      this.materialesReales = {
-        techo: vista === "satelite" ? new THREE.MeshStandardMaterial({ map: techo }) : new THREE.MeshStandardMaterial({ color: "#ece9e4" }),
-        pared: new THREE.MeshStandardMaterial({ color: vista === "satelite" ? "#b9b2a6" : "#d3cdc4" }),
-        techoNaranja: new THREE.MeshStandardMaterial({ color: RESALTADO.edificio }),
-        paredNaranja: new THREE.MeshStandardMaterial({ color: RESALTADO.pared }),
-      };
     }
     this.estiloDespacho.forEach(objeto => { objeto.visible = vista === "despacho"; });
     if (vista === "despacho") {
@@ -159,6 +136,36 @@ export class Mapa3D {
     this._limitar();
     this._aplicarPaleta(this._paleta);
     this._aplicarResaltados(new Set(this._resaltados.split(",").filter(Boolean).map(Number)));
+  }
+
+  _crearVistaReal(vista, mosaico) {
+    let techo;
+    const [x0, y0, x1, y1] = mosaico.caja, ancho = x1 - x0, alto = y1 - y0;
+    const suelo = new THREE.Texture(), foto = new THREE.Texture(), imagen = new Image();
+    imagen.onload = () => {  // el suelo lleva los bordes difuminados; los techos, la foto tal cual
+      suelo.image = difuminarBordes(imagen); foto.image = imagen;
+      suelo.needsUpdate = foto.needsUpdate = techo.needsUpdate = true;
+    };
+    imagen.src = mosaico.imagen;
+    for (const t of [suelo, foto]) {
+      t.colorSpace = THREE.SRGBColorSpace;
+      t.anisotropy = this.renderer.capabilities.getMaxAnisotropy();
+    }
+    const sueloReal = new THREE.Mesh(new THREE.PlaneGeometry(ancho, alto),
+                                     new THREE.MeshStandardMaterial({ map: suelo, transparent: true, depthWrite: false }));
+    sueloReal.rotation.x = -Math.PI / 2;
+    sueloReal.position.copy(a3(x0 + ancho / 2, y0 + alto / 2, -0.3));
+    sueloReal.receiveShadow = true;
+    // los techos usan la misma foto: las tapas de ExtrudeGeometry traen sus coordenadas en metros
+    techo = foto.clone();
+    techo.repeat.set(1 / ancho, 1 / alto);
+    techo.offset.set(-x0 / ancho, -y0 / alto);
+    return { suelo: sueloReal, materiales: {
+      techo: vista === "satelite" ? new THREE.MeshStandardMaterial({ map: techo }) : new THREE.MeshStandardMaterial({ color: "#ece9e4" }),
+      pared: new THREE.MeshStandardMaterial({ color: vista === "satelite" ? "#b9b2a6" : "#d3cdc4" }),
+      techoNaranja: new THREE.MeshStandardMaterial({ color: RESALTADO.edificio }),
+      paredNaranja: new THREE.MeshStandardMaterial({ color: RESALTADO.pared }),
+    } };
   }
 
   _aplicarPaleta(p) {
