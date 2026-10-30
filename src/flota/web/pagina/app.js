@@ -28,7 +28,8 @@ async function iniciar() {
   cargarTema(geo.tema);
   llenarFormulario(geo);
   mapa = await crearMapa(geo);
-  conectarControles();
+  ultimo = await api.estado();
+  conectarControles(ultimo);
   ciclo();
 }
 
@@ -265,7 +266,7 @@ function dibujarBarras(e) {
 }
 
 // --- Controles ----------------------------------------------------------------------------
-function conectarControles() {
+function conectarControles(estado) {
   $("boton-auto").addEventListener("click", () => vista.llamada !== null && despacharCon(api.despachar_auto(vista.llamada)));
   document.querySelector("[data-cerrar=llamada]").addEventListener("click", cerrarLlamada);
   document.querySelector("[data-cerrar=robot]").addEventListener("click", () => elegirRobot(vista.robotElegido));
@@ -279,8 +280,12 @@ function conectarControles() {
     if (r && r.error) avisar(r.error);
   });
 
-  segmentado($("selector-clima"), real => { api.usar_clima(real); $("simulador").querySelectorAll("input").forEach(i => i.disabled = real); });
-  segmentado($("selector-calendario"), real => { api.usar_calendario(real); $("festivo").disabled = real; });
+  const modoClima = real => { marcarReal($("selector-clima"), real); $("simulador").querySelectorAll("input").forEach(i => i.disabled = real); };
+  const modoCalendario = real => { marcarReal($("selector-calendario"), real); $("festivo").disabled = real; };
+  modoClima(estado.clima.proveedor !== "simulado");  // con --real la página arranca en Open-Meteo y Nager.Date
+  modoCalendario(estado.calendario.proveedor !== "simulado");
+  segmentado($("selector-clima"), real => { api.usar_clima(real); modoClima(real); });
+  segmentado($("selector-calendario"), real => { api.usar_calendario(real); modoCalendario(real); });
   const clima = () => api.configurar_clima($("viento").value, $("lluvia").value, $("dia").checked,
                                            $("visibilidad").value, $("tormenta").checked);
   ["viento", "lluvia", "visibilidad", "dia", "tormenta"].forEach(id => $(id).addEventListener("input", clima));
@@ -290,15 +295,16 @@ function conectarControles() {
     if (e.target.matches("input, select")) return;  // escribir en el formulario no dispara atajos
     if (e.key === "Escape") { cerrarLlamada(); if (vista.robotElegido) elegirRobot(vista.robotElegido); }
     if (e.key.toLowerCase() === "a" && vista.llamada !== null) despacharCon(api.despachar_auto(vista.llamada));
-    if (e.key === "Tab" && mapa.alternar) { e.preventDefault(); mapa.alternar(); }
+    if (e.key.toLowerCase() === "m" && mapa.alternar) mapa.alternar();  // Tab queda para moverse con el teclado
     if (e.key.toLowerCase() === "r" && mapa.girar) mapa.girar();
     if (e.key.toLowerCase() === "v") cambiarVista();
   });
 }
 
 function segmentado(contenedor, alCambiar) {
-  contenedor.querySelectorAll("button").forEach(boton => boton.addEventListener("click", () => {
-    contenedor.querySelectorAll("button").forEach(b => b.classList.toggle("activo", b === boton));
-    alCambiar(boton.dataset.real === "true");
-  }));
+  contenedor.querySelectorAll("button").forEach(boton => boton.addEventListener("click", () => alCambiar(boton.dataset.real === "true")));
+}
+
+function marcarReal(contenedor, real) {
+  contenedor.querySelectorAll("button").forEach(b => b.classList.toggle("activo", (b.dataset.real === "true") === real));
 }

@@ -1,4 +1,5 @@
 """CentroControl, el modelo de presentación: se prueba sin ventana y con un reloj falso."""
+import threading
 import time
 
 import pytest
@@ -8,7 +9,7 @@ from flota.campus import cargar_campus, cargar_geometria
 from flota.dominio.bitacora import Bitacora
 from flota.dominio.estado_robot import EstadoRobot
 from flota.dominio.solicitud import EstadoSolicitud
-from flota.presentacion.centro_control import (CENTRO_CAMPUS, CentroControl, a_metros,
+from flota.presentacion.centro_control import (CENTRO_CAMPUS, REFRESCO_CLIMA_S, CentroControl, a_metros,
                                       punto_en_recorrido)
 from flota.servicios.calendario_simulado import CalendarioSimulado
 from flota.servicios.clima_simulado import ServicioClimaSimulado
@@ -152,6 +153,35 @@ def test_cambiar_a_los_proveedores_reales(centro):
     clima = centro.estado()["clima"]
     assert clima["proveedor"] == "Open-Meteo" and clima["viento"] == 50 and not clima["drones_autorizados"]
     assert centro.estado()["calendario"] == {"proveedor": "Nager.Date", "festivo": "Festivo real"}
+
+
+def test_refrescar_el_clima_real_no_borra_el_ultimo_reporte(reloj):
+    class ClimaLento(ServicioClimaSimulado):  # "Open-Meteo" que tarda hasta que la prueba lo suelta
+        def __init__(self):
+            super().__init__(es_de_dia=False)
+            self.suelto = threading.Event()
+
+        def obtener_reporte(self, ubicacion):
+            self.suelto.wait(2)
+            return super().obtener_reporte(ubicacion)
+
+    ubicaciones, flota = cargar_campus()
+    bitacora, lento = Bitacora(), ClimaLento()
+    asignador = AsignadorEntregas(flota, ServicioClimaSimulado(), bitacora, reloj=reloj)
+    centro = CentroControl(ubicaciones, flota, asignador, bitacora, cargar_geometria(),
+                           clima_real=lento, reloj=reloj)
+    lento.suelto.set()
+    centro.usar_clima(True)
+    for _ in range(100):
+        if not centro.estado()["clima"]["consultando"]:
+            break
+        time.sleep(0.01)
+    lento.suelto.clear()
+    reloj.ahora += REFRESCO_CLIMA_S
+    centro.tick()  # la nueva lectura queda esperando en su hilo
+    clima = centro.estado()["clima"]
+    assert not clima["consultando"] and clima["es_de_dia"] is False  # de noche sigue de noche
+    lento.suelto.set()
 
 
 def test_el_mantenimiento_termina_solo(centro, reloj):

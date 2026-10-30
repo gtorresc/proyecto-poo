@@ -159,6 +159,7 @@ class CentroControl:
     def usar_clima(self, real: bool) -> None:
         """La prueba en vivo del PRD: cambia el proveedor sin tocar la asignación."""
         self._asignador.cambiar_proveedor_clima(self._clima_real if real else self._clima_simulado)
+        self._reporte = None  # el dato del proveedor anterior ya no vale
         self._leer_clima()
         self._asignador.reintentar_pendientes()  # un clima mejor puede liberar solicitudes
 
@@ -197,8 +198,8 @@ class CentroControl:
         if proveedor is self._clima_simulado:
             self._reporte = proveedor.obtener_reporte(self._punto_clima())
             return
-        self._reporte = None  # la red puede tardar hasta el timeout: no congelar la ventana
-
+        # la red puede tardar hasta el timeout: se lee en otro hilo y, mientras, sigue el último reporte
+        # (borrarlo haría parpadear el mapa a la paleta de día en cada refresco nocturno)
         def leer():
             reporte = proveedor.obtener_reporte(self._punto_clima())
             if proveedor is self._asignador.proveedor_clima:  # ignora un proveedor ya cambiado
