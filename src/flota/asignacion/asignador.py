@@ -71,6 +71,8 @@ class AsignadorEntregas:
 
         Si no se puede, devuelve el motivo y la solicitud sigue esperando al operador
         (no entra a la cola de reintentos automáticos)."""
+        if solicitud.estado is not EstadoSolicitud.PENDIENTE:  # antes de cargar el robot, como en asignar
+            raise ValueError(f"Solicitud {solicitud.id} ya está {solicitud.estado.value}")
         if self._flota.buscar(robot.id) is not robot:
             raise ValueError(f"{robot.id} no pertenece a la flota")
         motivo = self._motivo_festivo(solicitud) or robot.motivo_rechazo(solicitud)

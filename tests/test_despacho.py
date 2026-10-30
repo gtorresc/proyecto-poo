@@ -94,6 +94,16 @@ def test_el_festivo_aplica_tambien_al_despacho_manual(entorno):
     assert asignador.despachar(s, flota.buscar("R-02")) == (False, "cafetería cerrada (festivo: Día de la Raza)")
 
 
+def test_despachar_una_ya_asignada_no_carga_otro_robot(entorno):
+    flota, _, _, asignador = entorno
+    s = SolicitudEntrega(CAFETERIA, BIBLIOTECA, Documento("Tesis", 1))
+    assert asignador.despachar(s, flota.buscar("R-01"))[0]
+    with pytest.raises(ValueError):
+        asignador.despachar(s, flota.buscar("O-01"))
+    assert flota.buscar("O-01").estado is EstadoRobot.DISPONIBLE  # sin carga fantasma
+    assert flota.buscar("O-01").carga_actual is None
+
+
 def test_no_se_despacha_un_robot_ajeno_a_la_flota(entorno):
     _, _, _, asignador = entorno
     with pytest.raises(ValueError):
