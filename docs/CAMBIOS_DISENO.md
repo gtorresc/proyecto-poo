@@ -1,6 +1,6 @@
 # Cambios de diseño: del UML v1 al código
 
-El UML v1 ([diagrama_clases_v1.png](fase3-uml/diagrama_clases_v1.png)) salió de las tarjetas CRC antes de escribir código. Al implementarlo apareció lo que el papel no mostraba. Este anexo lista cada diferencia: qué cambió, por qué y qué se aprendió. El resultado está en [diagrama_clases_v2.png](fase3-uml/diagrama_clases_v2.png) ([fuente draw.io](fase3-uml/diagrama_clases_v2.drawio)).
+El UML v1 ([diagrama_clases_v1.png](fase3-uml/diagrama_clases_v1.png)) salió de las tarjetas CRC antes de escribir código. Al implementarlo apareció lo que el papel no mostraba. Este anexo lista cada diferencia: qué cambió, por qué y qué se aprendió. El resultado de la Fase 5 está en [diagrama_clases_v2.png](fase3-uml/diagrama_clases_v2.png) ([fuente draw.io](fase3-uml/diagrama_clases_v2.drawio)). Las secciones 1 a 6 describen esa versión; lo que cambió después, hasta el código actual y el UML v3, está en la sección 7.
 
 Las clases, las relaciones y los patrones de las Fases 3 y 4 (herencia de `Robot`, `Carga` y `ProveedorClima`, composición `Robot ◆— Bateria`, agregación `Flota ◇— Robot`, clima inyectado) se mantuvieron sin cambios.
 
@@ -42,24 +42,26 @@ Las clases, las relaciones y los patrones de las Fases 3 y 4 (herencia de `Robot
 | Elemento | Motivo |
 | --- | --- |
 | `src/flota/campus.json` y `src/flota/campus.py` | Son datos (los puntos reales del campus y la flota inicial), no clases del dominio. La demo y la GUI cargan lo mismo. |
-| `main.py` | Punto de entrada: demo por consola, `--real` para Open-Meteo y `--gui` para la ventana. |
-| `src/flota/gui/` | Capa de presentación. No tiene reglas de negocio: solo llama a `AsignadorEntregas` y lee `Flota` y `Bitacora`. Si se borra, el sistema y sus tests siguen funcionando. |
+| `main.py` | Punto de entrada: abre el centro de control web; `--consola` corre la demo por texto y `--real` usa Open-Meteo y Nager.Date. |
+| `src/flota/presentacion/` y `src/flota/web/` | Capa de presentación (`CentroControl`, `PuenteWeb` y la página). No tiene reglas de negocio: solo llama al dominio y lo traduce a datos simples. Si se borra, el sistema y sus tests de dominio siguen funcionando. En la Fase 5 era `src/flota/gui/` (CustomTkinter), retirada en v3 (sección 7). |
 
 ## 5. Decidido no implementar
 
 | Elemento | Motivo |
 | --- | --- |
 | Reporte de la bitácora en CSV | La CRC lo mencionaba; se entregó en texto (`generar_reporte()` y el botón "Exportar reporte"), que cubre el requisito. |
-| OSRM (rutas reales) y Nager.Date (festivos) | Eran opcionales. La distancia es Haversine × `factor_ruta()`, como en el UML v1. |
+| OSRM (rutas reales) y Nager.Date (festivos) | Eran opcionales y quedaron fuera de la Fase 5: la distancia era Haversine × `factor_ruta()`, como en el UML v1. **Superado en v3 (sección 7):** Nager.Date se implementó y las rutas siguen los senderos reales de OSM con `RedSenderos` (sin OSRM). |
 
 ## 6. Dos hallazgos técnicos fuera del dominio
+
+Ambos son de la interfaz de CustomTkinter de la Fase 5, retirada en v3 (sección 7); la web no usa tiles de `tkintermapview`.
 
 - **El mapa tardaba ~20 s por cada tile.** En una red con IPv6 bloqueado, `requests` espera a que fallen las 4 direcciones IPv6 antes de probar IPv4, y `tkintermapview` no pone timeout. Se arregló en `gui/panel_mapa.py` con una sesión que fuerza IPv4 y tiene timeout de 10 s. Aprendizaje: una dependencia externa puede fallar por la red de quien la usa, no por el código; por eso el clima real también tiene timeout y respuesta "no disponible".
 - **OpenStreetMap exige identificar la aplicación.** `tkintermapview` manda un `User-Agent` fijo que OSM puede bloquear; el mapa envía `FlotaRobotsUdeM/1.0` (política de uso de tiles de OSM).
 
 ## 7. Versión 3: mejoras de la rama `udem-despacho`
 
-Después de entregar la Fase 5 se abrió la rama `udem-despacho` para mejorar el programa sin arriesgar la versión entregada (`main`). Cada cambio se anota aquí en el mismo commit que lo introduce.
+Después de entregar la Fase 5 se abrió la rama `udem-despacho` para mejorar el programa sin arriesgar la versión entregada (`main`). Cada cambio se anota aquí en el mismo commit que lo introduce. Las filas que nombran `gui/` describen la interfaz de CustomTkinter, que se retiró al final de esta sección; lo que compartía con la web vive ahora en `presentacion/`.
 
 El resultado está en [diagrama_clases_v3.png](fase3-uml/diagrama_clases_v3.png) ([fuente draw.io](fase3-uml/diagrama_clases_v3.drawio)) y en el [changelog del UML](fase3-uml/CHANGELOG_UML.md). La versión entregada quedó marcada con el tag `v1-entrega`.
 

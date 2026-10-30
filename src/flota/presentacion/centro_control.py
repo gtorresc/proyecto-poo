@@ -218,7 +218,7 @@ class CentroControl:
         threading.Thread(target=leer, daemon=True).start()
 
     def _punto_clima(self):
-        return next(iter(self._ubicaciones.values()))  # el campus mide 600 m: un punto basta
+        return next(iter(self._ubicaciones.values()))  # el campus mide unos 450 m: un punto basta
 
     # --- Reloj de la simulación --------------------------------------------
     def tick(self) -> bool:
