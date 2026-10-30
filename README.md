@@ -4,7 +4,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white" alt="Python 3.10 o superior">
-  <img src="https://img.shields.io/badge/pruebas-238%20en%20verde-3f9a6b" alt="238 pruebas en verde">
+  <img src="https://img.shields.io/badge/pruebas-239%20en%20verde-3f9a6b" alt="239 pruebas en verde">
   <img src="https://img.shields.io/badge/interfaz-web%203D%20%C2%B7%20three.js-1d7f7b" alt="Interfaz web 3D con three.js">
   <a href="LICENSE.md"><img src="https://img.shields.io/badge/licencia-MIT-f08a2c" alt="Licencia MIT"></a>
 </p>
@@ -177,6 +177,24 @@ scripts/           descarga de la geometría del campus
 tests/             pruebas con pytest
 docs/              entregables del curso, UML y capturas
 ```
+
+## Extender el sistema
+
+Agregar un tipo nuevo no toca el asignador ni la interfaz: el polimorfismo hace el resto.
+
+**Un robot nuevo** (por ejemplo, uno anfibio):
+
+1. En `src/flota/dominio/robot.py`, una subclase de `Robot` con `zonas_accesibles()`, `costo_por_km()` y `consumo_por_km()`. Si hace falta, redefine `trazar_ruta()`, `requiere_clima()`, `es_aereo()` o `terreno_irregular()`.
+2. En `src/flota/campus.py`, una línea en `TIPOS_ROBOT` (`"anfibio": RobotAnfibio`), y un robot de ese tipo en `src/flota/campus.json`.
+3. Si llega a un lugar nuevo (un lago), un valor más en `Zona` (`dominio/ubicacion.py`) y la ubicación en `campus.json`.
+
+**Una carga nueva** (por ejemplo, muestras biológicas):
+
+1. En `src/flota/dominio/carga.py`, una subclase de `Carga` con `recargo()` y, si tiene una restricción, `es_compatible_con(robot)`. Pregunta por capacidades del robot (`tiene_control_temperatura`, `es_aereo()`…), nunca por su clase.
+2. En `src/flota/presentacion/centro_control.py`, una línea en `TIPOS_CARGA` para que aparezca en el formulario.
+
+La plantilla, el radar, la bitácora y la regla de “ningún robot puede llevarla” funcionan sin más cambios. Conviene sumar una prueba en `tests/test_robot.py` o `tests/test_carga.py`.
+
 
 ## Documentación del curso
 

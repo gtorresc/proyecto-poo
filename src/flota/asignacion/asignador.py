@@ -164,7 +164,9 @@ class AsignadorEntregas:
         aptos = [(r.calcular_costo(solicitud.origen, solicitud.destino, solicitud.carga), r)
                  for r in self._flota.disponibles() if r.puede_atender(solicitud)]
         elegido, rechazada_por_clima = None, False
-        for costo, robot in sorted(aptos, key=lambda c: c[0]):
+        # a igual costo, el que llega antes al origen (el costo solo mide el tramo origen -> destino)
+        cercania = lambda c: (c[0], c[1].calcular_tiempo_min(c[1].ubicacion, solicitud.origen))
+        for costo, robot in sorted(aptos, key=cercania):
             if robot.requiere_clima():
                 if reporte is None:
                     reporte = self._proveedor_clima.obtener_reporte(solicitud.destino)

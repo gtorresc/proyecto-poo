@@ -41,6 +41,15 @@ def test_documento_entre_edificios_va_en_ruedas_el_mas_barato(entorno):
     assert flota.buscar("R-01").estado is EstadoRobot.EN_RUTA
 
 
+def test_a_igual_costo_va_el_robot_mas_cercano_al_origen():
+    flota, bitacora = Flota(), Bitacora()
+    flota.agregar(RobotRuedas("R-01", BIBLIOTECA))  # primero en la lista, pero lejos del origen
+    flota.agregar(RobotRuedas("R-02", CAFETERIA))
+    s = SolicitudEntrega(CAFETERIA, BIBLIOTECA, Documento("Tesis", 1))
+    assert AsignadorEntregas(flota, ServicioClimaSimulado(), bitacora).asignar(s)
+    assert s.robot.id == "R-02"
+
+
 def test_azotea_con_buen_clima_va_en_dron(entorno):
     _, _, _, asignador = entorno
     s = SolicitudEntrega(CAFETERIA, AZOTEA, Documento("Tesis", 1))
