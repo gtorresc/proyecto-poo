@@ -206,7 +206,7 @@ La plantilla, el radar, la bitácora y la regla de “ningún robot puede llevar
 | 4. Justificación de decisiones | [fase4-justificacion.md](docs/fase4-justificacion/fase4-justificacion.md) · [PDF](docs/fase4-justificacion/fase4-justificacion.pdf) |
 | 5. Implementación | [código](src/flota) · [pruebas](tests) · [cambios de diseño](docs/CAMBIOS_DISENO.md) · [UML v2](docs/fase3-uml/diagrama_clases_v2.png) · [fuente draw.io](docs/fase3-uml/diagrama_clases_v2.drawio) |
 | Mejoras UdeM·DESPACHO | [cambios de diseño, sección 7](docs/CAMBIOS_DISENO.md) · [UML v3](docs/fase3-uml/diagrama_clases_v3.png) · [fuente draw.io](docs/fase3-uml/diagrama_clases_v3.drawio) |
-| 6. Reflexión crítica | pendiente |
+| 6. Reflexión crítica | [fase6-reflexion.md](docs/fase6-reflexion/fase6-reflexion.md) (en redacción) |
 
 Presentación de la primera entrega: [PDF](<docs/entrega1/Primera entrega — Flota de robots UdeM.pdf>).
 Cada diferencia entre el UML y el código, con su motivo, está en [CAMBIOS_DISENO.md](docs/CAMBIOS_DISENO.md).
